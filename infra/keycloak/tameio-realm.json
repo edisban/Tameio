@@ -1,0 +1,140 @@
+{
+  "realm": "tameio",
+  "displayName": "Tameio",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "bruteForceProtected": true,
+  "accessTokenLifespan": 300,
+  "internationalizationEnabled": true,
+  "supportedLocales": [
+    "el",
+    "en"
+  ],
+  "defaultLocale": "el",
+  "roles": {
+    "realm": [
+      {
+        "name": "offline_access",
+        "description": "${role_offline-access}"
+      },
+      {
+        "name": "uma_authorization",
+        "description": "${role_uma_authorization}"
+      },
+      {
+        "name": "business",
+        "description": "Owner or accountant of a business"
+      },
+      {
+        "name": "analyst",
+        "description": "Bank credit analyst"
+      },
+      {
+        "name": "manager",
+        "description": "Bank credit manager, second approval"
+      },
+      {
+        "name": "admin",
+        "description": "Bank administrator"
+      },
+      {
+        "name": "default-roles-tameio",
+        "description": "Given to everyone who signs up: they register as a business",
+        "composite": true,
+        "composites": {
+          "realm": [
+            "offline_access",
+            "uma_authorization",
+            "business"
+          ],
+          "client": {
+            "account": [
+              "view-profile",
+              "manage-account"
+            ]
+          }
+        }
+      }
+    ]
+  },
+  "defaultRole": {
+    "name": "default-roles-tameio"
+  },
+  "clients": [
+    {
+      "clientId": "tameio-web",
+      "name": "Tameio web app",
+      "description": "The React single-page app. Public client: it cannot keep a secret, so it signs in with PKCE.",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "rootUrl": "http://localhost:5180",
+      "redirectUris": [
+        "http://localhost:5180/*"
+      ],
+      "webOrigins": [
+        "http://localhost:5180"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:5180/*"
+      },
+      "protocolMappers": [
+        {
+          "name": "audience tameio-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "tameio-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "maria",
+      "enabled": true,
+      "email": "maria@example.com",
+      "emailVerified": true,
+      "firstName": "Μαρία",
+      "lastName": "Δημητρίου",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "maria",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "default-roles-tameio"
+      ]
+    },
+    {
+      "username": "giorgos",
+      "enabled": true,
+      "email": "giorgos@kyma-bank.example",
+      "emailVerified": true,
+      "firstName": "Γιώργος",
+      "lastName": "Νικολάου",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "giorgos",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "analyst"
+      ]
+    }
+  ]
+}

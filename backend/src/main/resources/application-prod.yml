@@ -1,0 +1,23 @@
+# Production differences only: no defaults for secrets, machine-readable logs, no API explorer
+spring:
+  datasource:
+    url: ${TAMEIO_DB_URL}
+    username: ${TAMEIO_DB_USERNAME}
+    password: ${TAMEIO_DB_PASSWORD}
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${TAMEIO_KEYCLOAK_ISSUER}
+
+logging:
+  structured:
+    # JSON log lines (Elastic Common Schema) that Loki or Elasticsearch can index
+    format:
+      console: ecs
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false

@@ -1,0 +1,64 @@
+package com.tameio.platform.web;
+
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
+import org.springframework.http.ProblemDetail;
+import org.springframework.http.ResponseEntity;
+import org.jspecify.annotations.Nullable;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+/**
+ * Turns exceptions into RFC 9457 problem details. Clients get a status, a short title and a readable
+ * detail; stack traces and SQL never leave the server.
+ */
+@Slf4j
+@RestControllerAdvice
+class ApiExceptionHandler extends ResponseEntityExceptionHandler {
+
+    @ExceptionHandler(NotFoundException.class)
+    ProblemDetail notFound(NotFoundException e) {
+        return problem(HttpStatus.NOT_FOUND, "Not found", e.getMessage());
+    }
+
+    @ExceptionHandler(ConflictException.class)
+    ProblemDetail conflict(ConflictException e) {
+        return problem(HttpStatus.CONFLICT, "Conflict", e.getMessage());
+    }
+
+    // A unique constraint hit by two concurrent requests that both passed the service's own check
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    ProblemDetail dataIntegrity(DataIntegrityViolationException e) {
+        log.info("Rejected a write that broke a database constraint: {}", e.getMostSpecificCause().getMessage());
+        return problem(HttpStatus.CONFLICT, "Conflict", "The request conflicts with existing data.");
+    }
+
+    // Bean Validation failures list every invalid field: {"errors": {"afm": "Not a valid ΑΦΜ"}}
+    @Override
+    protected @Nullable ResponseEntity<Object> handleMethodArgumentNotValid(
+            MethodArgumentNotValidException e, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+        Map<String, String> errors = new LinkedHashMap<>();
+        for (FieldError error : e.getBindingResult().getFieldErrors()) {
+            errors.putIfAbsent(error.getField(), error.getDefaultMessage());
+        }
+        ProblemDetail body = problem(HttpStatus.BAD_REQUEST, "Invalid request", "One or more fields are invalid.");
+        body.setProperty("errors", errors);
+        return ResponseEntity.badRequest().body(body);
+    }
+
+    private static ProblemDetail problem(HttpStatus status, String title, String detail) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, detail);
+        problem.setTitle(title);
+        return problem;
+    }
+}

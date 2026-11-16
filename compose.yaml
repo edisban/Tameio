@@ -1,0 +1,41 @@
+# Local development infrastructure: the database and the identity provider.
+# The backend and frontend run on the host for a fast edit-and-reload loop:
+#   docker compose up -d
+#   cd backend && ./mvnw spring-boot:run
+#   cd frontend && npm run dev
+# Credentials here are for local development only.
+name: tameio
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: tameio
+      POSTGRES_USER: tameio
+      POSTGRES_PASSWORD: tameio
+    # Bound to localhost only, on 5433 so it doesn't clash with another local PostgreSQL
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tameio -d tameio"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.8.2
+    # Development mode with the Tameio realm (roles, the web client, demo users) imported on first start
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_HEALTH_ENABLED: "true"
+    ports:
+      - "127.0.0.1:8180:8080"
+    volumes:
+      - ./infra/keycloak:/opt/keycloak/data/import:ro
+
+volumes:
+  postgres-data:

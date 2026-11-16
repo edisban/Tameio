@@ -1,0 +1,17 @@
+# Editors and OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Local secrets never go into git
+.env
+.env.local
+.env.*.local
+
+# Build output (each app also has its own ignore file)
+backend/target/
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/

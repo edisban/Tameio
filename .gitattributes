@@ -1,0 +1,7 @@
+# Store text with LF so the repo is the same on Windows, macOS and the Linux CI
+* text=auto eol=lf
+*.cmd text eol=crlf
+*.bat text eol=crlf
+*.png binary
+*.jpg binary
+*.jar binary
