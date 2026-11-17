@@ -22,6 +22,7 @@ A platform for Greek small businesses. It keeps their books, sends their invoice
 | File storage | Any S3-compatible store through the AWS SDK; SeaweedFS locally |
 | Identity | Keycloak 26 (realm imported from `infra/keycloak`) |
 | Frontend | React 19, TypeScript, Vite, MUI, TanStack Query, React Hook Form + Zod |
+| Document AI | Python 3.12, FastAPI, Tesseract OCR (Greek), scikit-learn |
 | Tests | JUnit 5, Testcontainers, MockMvc, JaCoCo; Vitest, Testing Library, MSW; Playwright |
 | CI | GitHub Actions: backend `verify`, frontend lint + test + build, Playwright end to end |
 
@@ -55,17 +56,30 @@ flowchart LR
 
 ## Run it locally
 
+### Just see the app
+
+Requirements: Docker only.
+
+```bash
+docker compose --profile app up -d --build
+```
+
+Everything runs in containers: the React app (nginx), the Spring Boot API, document AI (Python),
+PostgreSQL, Keycloak and S3 storage.
+
+### Work on the code
+
 Requirements: Docker, JDK 21 or newer, Node 22.
 
 ```bash
-# 1. Postgres (5433), Keycloak (8180) and S3 storage (8333)
+# 1. Infrastructure only: Postgres (5433), Keycloak (8180), S3 storage (8333), document AI (8090)
 docker compose up -d
 
-# 2. Backend on http://localhost:8080
+# 2. Backend on http://localhost:8080, restarts quickly as you change it
 cd backend
 ./mvnw spring-boot:run
 
-# 3. Frontend on http://localhost:5180
+# 3. Frontend on http://localhost:5180, reloads in the browser as you save
 cd frontend
 npm install
 npm run dev
@@ -85,6 +99,7 @@ Useful links while it runs:
 - API docs: http://localhost:8080/swagger-ui.html
 - Health: http://localhost:8080/actuator/health
 - Keycloak admin: http://localhost:8180 (admin / admin)
+- Document AI docs: http://localhost:8090/docs
 
 ## Tests
 
@@ -92,6 +107,7 @@ Useful links while it runs:
 | --- | --- | --- |
 | Backend unit and API | Domain rules, security, the module structure, every endpoint against real Postgres and S3 storage in containers. JaCoCo fails the build below 80% line coverage. | `cd backend && ./mvnw verify` (needs Docker) |
 | Frontend components | Forms, pages and error messages in a simulated browser, with the API faked by MSW | `cd frontend && npm test` (`npm run test:coverage` for coverage) |
+| Document AI | Field extraction rules, real OCR, and a quality gate: the build fails if the classifier's macro F1 on unseen shops drops | `cd ml/document-ai && pytest` |
 | End to end | The real app in Chromium through Keycloak, the API, Postgres and storage | start the stack and the backend, then `cd frontend && npm run e2e` |
 
 CI runs all three on every push; the end-to-end job starts the whole stack with `docker compose up --wait`.
@@ -116,6 +132,7 @@ The backend reads its settings from environment variables prefixed `TAMEIO_`. Th
 
 ```
 backend/    Spring Boot app, one package per module (platform, identity, documents, ...)
+ml/         Python services; document-ai reads receipts and suggests an expense category
 frontend/   React app, one folder per feature
 infra/      Keycloak realm, S3 storage identities and, later, the rest of the local infrastructure
 docs/       Design document and architecture decision records

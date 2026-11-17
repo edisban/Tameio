@@ -2,7 +2,8 @@ import { defineConfig, devices } from '@playwright/test'
 
 /**
  * End-to-end tests through the real stack: Keycloak, the Spring Boot API, PostgreSQL and S3 storage.
- * Start them first (docker compose up -d, then the backend); Playwright starts the frontend itself.
+ * Either run everything in containers (docker compose --profile app up -d --build) and set
+ * E2E_EXTERNAL=1, or start the infrastructure and the backend yourself and let Playwright start Vite.
  */
 export default defineConfig({
   testDir: './e2e',
@@ -18,10 +19,8 @@ export default defineConfig({
     screenshot: 'only-on-failure',
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
-  webServer: {
-    // CI tests the production build; locally the dev server is quicker to start and is reused if running
-    command: process.env.CI ? 'npm run build && npm run preview' : 'npm run dev',
-    url: 'http://localhost:5180',
-    reuseExistingServer: !process.env.CI,
-  },
+  // E2E_EXTERNAL: the app already runs (docker compose --profile app, as in CI); otherwise start the dev server
+  webServer: process.env.E2E_EXTERNAL
+    ? undefined
+    : { command: 'npm run dev', url: 'http://localhost:5180', reuseExistingServer: true },
 })

@@ -53,45 +53,63 @@ jobs:
       - run: npm run test:coverage
       - run: npm run build
 
+  document-ai:
+    name: Document AI (Python)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ml/document-ai
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: ml/document-ai/pyproject.toml
+      - name: Install Tesseract with Greek
+        run: sudo apt-get update && sudo apt-get install --yes --no-install-recommends tesseract-ocr tesseract-ocr-ell
+      - run: pip install -e ".[dev]"
+      - run: ruff check .
+      - run: ruff format --check .
+      # Unit tests, real OCR, and the model's quality gate on unseen shops
+      - run: pytest -q
+      - name: Train and report the model's scores
+        run: |
+          python -m training.train_classifier --out models
+          echo '### Document AI model' >> "$GITHUB_STEP_SUMMARY"
+          echo '```json' >> "$GITHUB_STEP_SUMMARY"
+          cat models/metrics.json >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
   e2e:
     name: End-to-end (Playwright)
-    # Only worth running once both apps pass their own checks
-    needs: [backend, frontend]
+    # Only worth running once every part passes its own checks
+    needs: [backend, frontend, document-ai]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '21'
-          cache: maven
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Start Postgres, Keycloak and S3 storage
-        run: docker compose up -d --wait
-
-      - name: Start the backend
-        working-directory: backend
-        run: |
-          ./mvnw -B -q -DskipTests package
-          nohup java -jar target/tameio-core-*.jar > backend.log 2>&1 &
-          for i in $(seq 1 60); do
-            curl -sf http://localhost:8080/actuator/health/readiness && exit 0
-            sleep 2
-          done
-          cat backend.log
-          exit 1
+      # The same images anyone gets with docker compose: this also tests the Dockerfiles
+      - name: Build and start the whole stack
+        run: docker compose --profile app up -d --build --wait
 
       - name: Run the browser tests
         working-directory: frontend
+        env:
+          E2E_EXTERNAL: '1'
         run: |
           npm ci
           npx playwright install --with-deps chromium
           npm run e2e
+
+      - name: Collect the containers' logs
+        if: failure()
+        run: docker compose --profile app logs --no-color > compose.log
 
       - uses: actions/upload-artifact@v4
         if: failure()
@@ -99,4 +117,4 @@ jobs:
           name: e2e-report
           path: |
             frontend/playwright-report/
-            backend/backend.log
+            compose.log

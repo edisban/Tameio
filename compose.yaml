@@ -1,9 +1,13 @@
-# Local development infrastructure: the database, the identity provider and S3-compatible file storage.
-# The backend and frontend run on the host for a fast edit-and-reload loop:
+# The whole Tameio stack for local use. Credentials here are for local development only.
+#
+# See the app, everything in containers (then open http://localhost:5180):
+#   docker compose --profile app up -d --build
+#
+# Work on the code: only the infrastructure in containers, the backend and frontend on the host
+# for a fast edit-and-reload loop:
 #   docker compose up -d
 #   cd backend && ./mvnw spring-boot:run
 #   cd frontend && npm run dev
-# Credentials here are for local development only.
 name: tameio
 
 services:
@@ -58,6 +62,46 @@ services:
       interval: 5s
       timeout: 3s
       retries: 20
+
+  document-ai:
+    # OCR, field extraction and expense classification (Python, FastAPI, Tesseract, scikit-learn)
+    build: ./ml/document-ai
+    image: tameio/document-ai:dev
+    ports:
+      - "127.0.0.1:8090:8090"
+
+  backend:
+    profiles: [app]
+    build: ./backend
+    image: tameio/backend:dev
+    environment:
+      TAMEIO_DB_URL: jdbc:postgresql://postgres:5432/tameio
+      TAMEIO_S3_ENDPOINT: http://storage:8333
+      # Tokens say they come from localhost:8180, the address the browser used to sign in; the
+      # backend checks that, but fetches Keycloak's signing keys over the container network
+      TAMEIO_KEYCLOAK_ISSUER: http://localhost:8180/realms/tameio
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/tameio/protocol/openid-connect/certs
+      TAMEIO_DOCUMENT_AI_URL: http://document-ai:8090
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      postgres: { condition: service_healthy }
+      keycloak: { condition: service_healthy }
+      storage: { condition: service_healthy }
+      document-ai: { condition: service_healthy }
+
+  frontend:
+    profiles: [app]
+    build:
+      context: ./frontend
+      args:
+        VITE_OIDC_AUTHORITY: http://localhost:8180/realms/tameio
+        VITE_OIDC_CLIENT_ID: tameio-web
+    image: tameio/frontend:dev
+    ports:
+      - "127.0.0.1:5180:5180"
+    depends_on:
+      backend: { condition: service_healthy }
 
 volumes:
   postgres-data:

@@ -1,9 +1,12 @@
 import { expect, type Page } from '@playwright/test'
 import path from 'node:path'
 
-/** Demo users from infra/keycloak/tameio-realm.json. */
+/**
+ * Users from infra/keycloak/tameio-realm.json. The tests sign in as their own business user, so the
+ * data they create never clutters the demo account (maria).
+ */
 export const users = {
-  owner: { username: 'maria', password: 'maria' },
+  owner: { username: 'e2e', password: 'e2e' },
   analyst: { username: 'giorgos', password: 'giorgos' },
 } as const
 

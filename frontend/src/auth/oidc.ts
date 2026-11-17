@@ -4,6 +4,11 @@ import type { AuthProviderProps } from 'react-oidc-context'
 const authority = import.meta.env.VITE_OIDC_AUTHORITY
 const clientId = import.meta.env.VITE_OIDC_CLIENT_ID
 
+// Fail loudly at start-up: without these the app would wait forever for a sign-in that never starts
+if (!authority || !clientId) {
+  throw new Error('VITE_OIDC_AUTHORITY and VITE_OIDC_CLIENT_ID must be set at build time (see frontend/.env)')
+}
+
 /**
  * Sign-in with Keycloak using the authorization code flow with PKCE, the recommended flow for
  * browser apps. Tokens stay in sessionStorage, so they end with the tab rather than lingering.
