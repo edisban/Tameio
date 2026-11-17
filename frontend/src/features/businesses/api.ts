@@ -13,10 +13,15 @@ export type RegisterBusiness = { afm: string; name: string }
 
 const keys = {
   all: ['businesses'] as const,
+  one: (id: string) => ['businesses', id] as const,
 }
 
 export function useBusinesses() {
   return useQuery({ queryKey: keys.all, queryFn: () => api<Business[]>('/api/v1/businesses') })
+}
+
+export function useBusiness(id: string) {
+  return useQuery({ queryKey: keys.one(id), queryFn: () => api<Business>(`/api/v1/businesses/${id}`) })
 }
 
 export function useRegisterBusiness() {

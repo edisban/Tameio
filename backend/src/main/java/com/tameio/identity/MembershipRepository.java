@@ -20,4 +20,6 @@ interface MembershipRepository extends JpaRepository<Membership, UUID> {
         select m from Membership m join fetch m.business
         where m.userId = :userId and m.business.id = :businessId""")
     Optional<Membership> findWithBusiness(String userId, UUID businessId);
+
+    boolean existsByUserIdAndBusinessId(String userId, UUID businessId);
 }

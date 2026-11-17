@@ -1,7 +1,9 @@
 import AddRoundedIcon from '@mui/icons-material/AddRounded'
+import ChevronRightRoundedIcon from '@mui/icons-material/ChevronRightRounded'
 import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded'
-import { Alert, Box, Button, Card, CardContent, Chip, Skeleton, Stack, Typography } from '@mui/material'
+import { Alert, Box, Button, Card, CardActionArea, CardContent, Chip, Skeleton, Stack, Typography } from '@mui/material'
 import { useState } from 'react'
+import { Link } from 'react-router'
 import { useBusinesses } from './api'
 import { RegisterBusinessDialog } from './RegisterBusinessDialog'
 
@@ -47,13 +49,16 @@ export function BusinessesPage() {
       <Stack spacing={2}>
         {businesses.data?.map(business => (
           <Card key={business.id} variant="outlined">
-            <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-              <Box sx={{ flex: 1, minWidth: 200 }}>
-                <Typography variant="h6">{business.name}</Typography>
-                <Typography color="text.secondary">ΑΦΜ {business.afm}</Typography>
-              </Box>
-              <Chip label={roleLabel[business.role]} color="primary" variant="outlined" />
-            </CardContent>
+            <CardActionArea component={Link} to={`/businesses/${business.id}`}>
+              <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+                <Box sx={{ flex: 1, minWidth: 200 }}>
+                  <Typography variant="h6">{business.name}</Typography>
+                  <Typography color="text.secondary">ΑΦΜ {business.afm}</Typography>
+                </Box>
+                <Chip label={roleLabel[business.role]} color="primary" variant="outlined" />
+                <ChevronRightRoundedIcon color="action" />
+              </CardContent>
+            </CardActionArea>
           </Card>
         ))}
       </Stack>

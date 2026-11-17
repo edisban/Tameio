@@ -10,6 +10,7 @@ import { oidcConfig } from './auth/oidc'
 import { RequireAuth } from './auth/RequireAuth'
 import { ApiError } from './api/http'
 import { BusinessesPage } from './features/businesses/BusinessesPage'
+import { BusinessDocumentsPage } from './features/documents/BusinessDocumentsPage'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -30,6 +31,7 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <Navigate to="/businesses" replace /> },
       { path: 'businesses', element: <BusinessesPage /> },
+      { path: 'businesses/:businessId', element: <BusinessDocumentsPage /> },
     ],
   },
 ])

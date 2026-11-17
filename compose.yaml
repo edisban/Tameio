@@ -1,4 +1,4 @@
-# Local development infrastructure: the database and the identity provider.
+# Local development infrastructure: the database, the identity provider and S3-compatible file storage.
 # The backend and frontend run on the host for a fast edit-and-reload loop:
 #   docker compose up -d
 #   cd backend && ./mvnw spring-boot:run
@@ -37,5 +37,21 @@ services:
     volumes:
       - ./infra/keycloak:/opt/keycloak/data/import:ro
 
+  storage:
+    # SeaweedFS speaks the S3 API, so the backend uses the AWS SDK and would run unchanged against AWS S3
+    image: chrislusf/seaweedfs:4.50
+    command: ["server", "-dir=/data", "-s3", "-s3.port=8333", "-s3.config=/etc/seaweedfs/s3.json"]
+    ports:
+      - "127.0.0.1:8333:8333"
+    volumes:
+      - storage-data:/data
+      - ./infra/seaweedfs/s3.json:/etc/seaweedfs/s3.json:ro
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8333/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
 volumes:
   postgres-data:
+  storage-data:

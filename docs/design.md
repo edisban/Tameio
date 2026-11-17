@@ -83,7 +83,7 @@ flowchart LR
     W["React web app<br/>business and bank"] --> GW["API gateway"]
     GW --> APP["Tameio core<br/>Spring Boot modular monolith"]
     APP --> PG[("PostgreSQL<br/>+ pgvector")]
-    APP --> S3[("MinIO<br/>documents")]
+    APP --> S3[("S3 storage<br/>documents")]
     APP --> R[("Redis")]
     APP <--> K{{"Kafka<br/>domain events"}}
     APP <--> MQ{{"RabbitMQ<br/>WebSocket relay"}}
@@ -139,7 +139,7 @@ replicas scale with load. k6 load tests show the effect in Grafana.
 | --- | --- |
 | `tenant` | A business, keyed by its ΑΦΜ |
 | `membership` | A user's role in a tenant or in the bank |
-| `document` | File in MinIO, type, processing status, page count |
+| `document` | File in S3 storage, type, processing status, page count |
 | `extracted_field` | Name, value, confidence, bounding box, source (model or person) |
 | `invoice` | Issuer, recipient, dates, net, VAT, total, MARK, origin (myDATA or document) |
 | `expense_classification` | Suggested and final category, model version, who confirmed it |
@@ -211,7 +211,7 @@ the credit model for unequal outcomes between groups ([ADR 0005](adr/0005-human-
 
 - Sign-in with Keycloak (OpenID Connect); roles and tenant come from the token.
 - Tenant isolation in the application and in the database (row-level security).
-- Secrets in Vault; documents encrypted at rest in MinIO; TLS everywhere outside local development.
+- Secrets in Vault; documents encrypted at rest in S3 storage; TLS everywhere outside local development.
 - An append-only audit log for every view of a case and every decision.
 - Personal data is redacted before any text reaches an LLM; the LLM runs locally, so no customer data
   leaves the platform.
@@ -230,7 +230,7 @@ model health.
 | Level | Tools |
 | --- | --- |
 | Unit | JUnit 5, pytest |
-| Integration | Testcontainers (PostgreSQL, Kafka, RabbitMQ, MinIO, Keycloak) |
+| Integration | Testcontainers (PostgreSQL, S3 storage, Kafka, RabbitMQ, Keycloak) |
 | Contracts between core and ML services | Spring Cloud Contract or Pact |
 | End to end | Playwright |
 | Load | k6 |
@@ -243,7 +243,7 @@ Each phase ends with something that runs and can be demonstrated.
 | Phase | Scope | Done when |
 | --- | --- | --- |
 | 0 | This design, first ADRs, repository and CI skeleton | Reviewed and pushed |
-| 1 | Core skeleton: Keycloak, tenants, document upload to MinIO, React app | A business signs in and uploads a document |
+| 1 | Core skeleton: Keycloak, tenants, document upload to S3 storage, React app | A business signs in and uploads a document |
 | 2 | Document AI v1: OCR, validation rules, baseline expense classifier | Fields and a classification appear for a receipt |
 | 3 | YOLO fine-tuning and the review screen with boxes over the document | mAP reported; corrections saved as training data |
 | 4 | myDATA: fetch, classify, issue, match by MARK, with Resilience4j | Round trip against the test environment |

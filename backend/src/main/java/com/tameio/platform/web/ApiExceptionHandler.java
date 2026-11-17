@@ -31,6 +31,16 @@ class ApiExceptionHandler extends ResponseEntityExceptionHandler {
         return problem(HttpStatus.NOT_FOUND, "Not found", e.getMessage());
     }
 
+    @ExceptionHandler(BadRequestException.class)
+    ProblemDetail badRequest(BadRequestException e) {
+        return problem(HttpStatus.BAD_REQUEST, "Invalid request", e.getMessage());
+    }
+
+    @ExceptionHandler(UnsupportedMediaTypeException.class)
+    ProblemDetail unsupportedMediaType(UnsupportedMediaTypeException e) {
+        return problem(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Unsupported file type", e.getMessage());
+    }
+
     @ExceptionHandler(ConflictException.class)
     ProblemDetail conflict(ConflictException e) {
         return problem(HttpStatus.CONFLICT, "Conflict", e.getMessage());

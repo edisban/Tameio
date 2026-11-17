@@ -1,27 +1,20 @@
 import { accessToken } from '../auth/oidc'
+import { ApiError, type Problem } from './errors'
 
-/** An RFC 9457 problem detail, as the API returns for every error. */
-export type Problem = {
-  status: number
-  title?: string
-  detail?: string
-  errors?: Record<string, string>
-}
+export { ApiError, type Problem }
 
-export class ApiError extends Error {
-  readonly problem: Problem
-
-  constructor(problem: Problem) {
-    super(problem.detail ?? problem.title ?? `Request failed (${problem.status})`)
-    this.problem = problem
-  }
+/** One page of a list, as Spring Data returns it. */
+export type Page<T> = {
+  content: T[]
+  page: { size: number; number: number; totalElements: number; totalPages: number }
 }
 
 /** Calls the API with the signed-in user's token and turns error responses into an ApiError. */
-export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
+async function request(path: string, init: RequestInit, accept: string): Promise<Response> {
   const headers = new Headers(init.headers)
-  headers.set('Accept', 'application/json')
-  if (init.body) headers.set('Content-Type', 'application/json')
+  headers.set('Accept', accept)
+  // JSON bodies are sent as strings; FormData sets its own multipart Content-Type with the boundary
+  if (typeof init.body === 'string') headers.set('Content-Type', 'application/json')
   const token = accessToken()
   if (token) headers.set('Authorization', `Bearer ${token}`)
 
@@ -31,5 +24,16 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
     const problem: Problem = isProblem ? await response.json() : { status: response.status }
     throw new ApiError({ ...problem, status: response.status })
   }
+  return response
+}
+
+export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const response = await request(path, init, 'application/json')
   return response.status === 204 ? (undefined as T) : response.json()
+}
+
+/** Downloads a file the API protects, which a plain link cannot do because it carries no token. */
+export async function apiBlob(path: string): Promise<Blob> {
+  const response = await request(path, {}, '*/*')
+  return response.blob()
 }

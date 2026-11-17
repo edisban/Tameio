@@ -44,4 +44,14 @@ public class BusinessService {
             .map(BusinessView::of)
             .orElseThrow(() -> new NotFoundException("Business not found."));
     }
+
+    /**
+     * For other modules: stops the request unless this user belongs to the business. Someone else's
+     * business is reported as not found, as in {@link #businessOf}.
+     */
+    public void checkAccess(CurrentUser user, UUID businessId) {
+        if (!memberships.existsByUserIdAndBusinessId(user.id(), businessId)) {
+            throw new NotFoundException("Business not found.");
+        }
+    }
 }

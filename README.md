@@ -2,13 +2,15 @@
 
 A platform for Greek small businesses. It keeps their books, sends their invoices to myDATA (AADE), and lets them apply for a business loan from a bank (here the fictional **Kyma Bank · demo**).
 
-> Work in progress. This first slice covers sign-in and business registration. See [docs/design.md](docs/design.md) for the full plan and [docs/adr/](docs/adr/) for the decisions behind it.
+> Work in progress. Sign-in, business registration and document upload work today. See [docs/design.md](docs/design.md) for the full plan and [docs/adr/](docs/adr/) for the decisions behind it.
 
 ## What works today
 
 - Sign in or sign up through Keycloak (OpenID Connect, PKCE)
 - Register a business with its ΑΦΜ, checked on both sides with the official check digit
 - List only the businesses you belong to; anyone else gets 404, not 403, so the API does not reveal that a business exists
+- Upload receipts and invoices (PDF, JPEG, PNG, up to 10 MB) to S3-compatible storage, list them page by page and open them
+- The file type is read from the file's first bytes, not from its name; the same file cannot be uploaded twice
 - Errors follow RFC 9457 (`application/problem+json`)
 
 ## Stack
@@ -17,9 +19,10 @@ A platform for Greek small businesses. It keeps their books, sends their invoice
 | --- | --- |
 | Backend | Java 21, Spring Boot 4, Spring Modulith, Spring Security (OAuth2 resource server), Spring Data JPA |
 | Database | PostgreSQL 17, schema owned by Flyway (`ddl-auto: validate`) |
+| File storage | Any S3-compatible store through the AWS SDK; SeaweedFS locally |
 | Identity | Keycloak 26 (realm imported from `infra/keycloak`) |
 | Frontend | React 19, TypeScript, Vite, MUI, TanStack Query, React Hook Form + Zod |
-| Tests | JUnit 5, Testcontainers (real Postgres), MockMvc; Vitest |
+| Tests | JUnit 5, Testcontainers (real Postgres and S3 storage), MockMvc; Vitest |
 | CI | GitHub Actions: backend `verify`, frontend lint + test + build |
 
 ## Architecture
@@ -30,19 +33,24 @@ flowchart LR
     keycloak[Keycloak<br/>OpenID Connect]
     subgraph api[Spring Boot · modular monolith]
         identity[identity]
-        platform[platform<br/>security · errors · persistence]
+        documents[documents]
+        platform[platform<br/>security · errors · persistence · storage]
     end
     db[(PostgreSQL<br/>Flyway)]
+    s3[(S3 storage<br/>SeaweedFS locally)]
 
     browser -- sign in, PKCE --> keycloak
     browser -- REST + JWT --> api
     api -- checks token signature --> keycloak
     api --> db
+    api --> s3
+    documents -- checks membership --> identity
 ```
 
-- **Modular monolith.** One deployable, split into business modules (`identity` today, then `documents`, `accounting`, `mydata`, `lending`, …). Spring Modulith tests that a module only uses another module's public API, so a module can later be moved into its own service if it ever needs to be ([ADR 0001](docs/adr/0001-modular-monolith-first.md)).
+- **Modular monolith.** One deployable, split into business modules (`identity` and `documents` today, then `accounting`, `mydata`, `lending`, …). Spring Modulith tests that a module only uses another module's public API, so a module can later be moved into its own service if it ever needs to be ([ADR 0001](docs/adr/0001-modular-monolith-first.md)).
 - **Inside a module:** controller → service → repository. Classes are package-private unless another module needs them. The API never returns JPA entities, only records such as `BusinessView`.
-- **`platform`** holds what every module shares: JWT validation and role mapping, RFC 9457 errors, the audited base entity, ΑΦΜ validation.
+- **`platform`** holds what every module shares: JWT validation and role mapping, RFC 9457 errors, the audited base entity, ΑΦΜ validation, and a `FileStore` interface over S3.
+- **Events.** `documents` publishes `DocumentUploaded`; document AI will start from that event instead of being called directly.
 - **Lombok** is limited to constructors, getters and loggers. `@Data`, setters and generated `equals`/`hashCode` are turned off in `lombok.config`, because they cause bugs in JPA entities.
 
 ## Run it locally
@@ -50,7 +58,7 @@ flowchart LR
 Requirements: Docker, JDK 21 or newer, Node 22.
 
 ```bash
-# 1. Postgres (port 5433) and Keycloak (port 8180)
+# 1. Postgres (5433), Keycloak (8180) and S3 storage (8333)
 docker compose up -d
 
 # 2. Backend on http://localhost:8080
@@ -81,7 +89,7 @@ Useful links while it runs:
 ## Tests
 
 ```bash
-cd backend && ./mvnw verify   # needs Docker for Testcontainers
+cd backend && ./mvnw verify   # needs Docker: tests start Postgres and S3 storage in containers
 cd frontend && npm test
 ```
 
@@ -95,12 +103,17 @@ The backend reads its settings from environment variables prefixed `TAMEIO_`. Th
 | `TAMEIO_DB_USERNAME` | `tameio` |
 | `TAMEIO_DB_PASSWORD` | `tameio` |
 | `TAMEIO_KEYCLOAK_ISSUER` | `http://localhost:8180/realms/tameio` |
+| `TAMEIO_S3_ENDPOINT` | `http://localhost:8333` |
+| `TAMEIO_S3_REGION` | `eu-central-1` |
+| `TAMEIO_S3_BUCKET` | `tameio-documents` |
+| `TAMEIO_S3_ACCESS_KEY` | `tameio` |
+| `TAMEIO_S3_SECRET_KEY` | `tameio-dev-secret` |
 
 ## Project layout
 
 ```
-backend/    Spring Boot app, one package per module (platform, identity, ...)
+backend/    Spring Boot app, one package per module (platform, identity, documents, ...)
 frontend/   React app, one folder per feature
-infra/      Keycloak realm and, later, the rest of the local infrastructure
+infra/      Keycloak realm, S3 storage identities and, later, the rest of the local infrastructure
 docs/       Design document and architecture decision records
 ```

@@ -9,23 +9,19 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
-import java.util.Arrays;
-import java.util.UUID;
-import java.util.concurrent.ThreadLocalRandom;
 
+import static com.tameio.TestUsers.businessUser;
+import static com.tameio.TestUsers.freshAfm;
+import static com.tameio.TestUsers.user;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 
 /**
  * The businesses API end to end: real HTTP handling, real security rules and a real PostgreSQL in a
- * container. Tokens are built in the test (no Keycloak needed) with the claims Keycloak would send.
- * Every test uses its own users and ΑΦΜs, so tests never depend on each other or on order.
+ * container. Every test uses its own users and ΑΦΜs, so tests never depend on each other or on order.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -34,27 +30,6 @@ class BusinessApiTest {
 
     @Autowired
     MockMvcTester mvc;
-
-    private static RequestPostProcessor user(String... roles) {
-        String id = UUID.randomUUID().toString();
-        return jwt()
-            .jwt(token -> token.subject(id).claim("name", "Maria Test").claim("email", "maria@example.com"))
-            .authorities(Arrays.stream(roles).map(r -> (GrantedAuthority) new SimpleGrantedAuthority("ROLE_" + r)).toList());
-    }
-
-    private static RequestPostProcessor businessUser() {
-        return user("BUSINESS");
-    }
-
-    /** A valid ΑΦΜ no other test uses: eight random digits and the matching check digit. */
-    private static String freshAfm() {
-        String first = String.format("%08d", ThreadLocalRandom.current().nextInt(100_000_000));
-        int sum = 0;
-        for (int i = 0; i < 8; i++) {
-            sum += (first.charAt(i) - '0') << (8 - i);
-        }
-        return first + sum % 11 % 10;
-    }
 
     private MvcTestResult register(RequestPostProcessor user, String afm, String name) {
         return mvc.post().uri("/api/v1/businesses").with(user)
