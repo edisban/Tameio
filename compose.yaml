@@ -36,6 +36,13 @@ services:
       - "127.0.0.1:8180:8080"
     volumes:
       - ./infra/keycloak:/opt/keycloak/data/import:ro
+    # The image has no curl; bash's /dev/tcp asks the management port whether Keycloak is ready
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/9000 && printf 'GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 && grep -q '200 OK' <&3"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
 
   storage:
     # SeaweedFS speaks the S3 API, so the backend uses the AWS SDK and would run unchanged against AWS S3
@@ -47,7 +54,7 @@ services:
       - storage-data:/data
       - ./infra/seaweedfs/s3.json:/etc/seaweedfs/s3.json:ro
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8333/healthz"]
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8333/healthz"]
       interval: 5s
       timeout: 3s
       retries: 20

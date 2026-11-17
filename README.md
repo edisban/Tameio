@@ -22,8 +22,8 @@ A platform for Greek small businesses. It keeps their books, sends their invoice
 | File storage | Any S3-compatible store through the AWS SDK; SeaweedFS locally |
 | Identity | Keycloak 26 (realm imported from `infra/keycloak`) |
 | Frontend | React 19, TypeScript, Vite, MUI, TanStack Query, React Hook Form + Zod |
-| Tests | JUnit 5, Testcontainers (real Postgres and S3 storage), MockMvc; Vitest |
-| CI | GitHub Actions: backend `verify`, frontend lint + test + build |
+| Tests | JUnit 5, Testcontainers, MockMvc, JaCoCo; Vitest, Testing Library, MSW; Playwright |
+| CI | GitHub Actions: backend `verify`, frontend lint + test + build, Playwright end to end |
 
 ## Architecture
 
@@ -88,10 +88,13 @@ Useful links while it runs:
 
 ## Tests
 
-```bash
-cd backend && ./mvnw verify   # needs Docker: tests start Postgres and S3 storage in containers
-cd frontend && npm test
-```
+| Level | What it checks | Run it |
+| --- | --- | --- |
+| Backend unit and API | Domain rules, security, the module structure, every endpoint against real Postgres and S3 storage in containers. JaCoCo fails the build below 80% line coverage. | `cd backend && ./mvnw verify` (needs Docker) |
+| Frontend components | Forms, pages and error messages in a simulated browser, with the API faked by MSW | `cd frontend && npm test` (`npm run test:coverage` for coverage) |
+| End to end | The real app in Chromium through Keycloak, the API, Postgres and storage | start the stack and the backend, then `cd frontend && npm run e2e` |
+
+CI runs all three on every push; the end-to-end job starts the whole stack with `docker compose up --wait`.
 
 ## Configuration
 

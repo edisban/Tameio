@@ -86,7 +86,7 @@ export function DocumentsTable({ businessId }: { businessId: string }) {
                 <TableCell>Αρχείο</TableCell>
                 <TableCell sx={typeColumn}>Τύπος</TableCell>
                 <TableCell align="right">Μέγεθος</TableCell>
-                <TableCell>Ανέβηκε</TableCell>
+                <TableCell>Ημερομηνία</TableCell>
                 <TableCell>Κατάσταση</TableCell>
               </TableRow>
             </TableHead>

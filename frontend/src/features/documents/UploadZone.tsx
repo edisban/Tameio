@@ -80,6 +80,7 @@ export function UploadZone({ businessId }: { businessId: string }) {
         <input
           ref={input}
           id="document-files"
+          aria-label="Επιλογή αρχείων"
           type="file"
           hidden
           multiple

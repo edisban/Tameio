@@ -4,10 +4,14 @@ import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded'
 import { Alert, Box, Button, Card, CardActionArea, CardContent, Chip, Skeleton, Stack, Typography } from '@mui/material'
 import { useState } from 'react'
 import { Link } from 'react-router'
+import { ApiError } from '../../api/http'
 import { useBusinesses } from './api'
 import { RegisterBusinessDialog } from './RegisterBusinessDialog'
 
 const roleLabel = { OWNER: 'Ιδιοκτήτης', ACCOUNTANT: 'Λογιστής' } as const
+
+// Bank staff are signed in but have no businesses; their own screens arrive with the lending phase
+const isForbidden = (error: Error) => error instanceof ApiError && error.problem.status === 403
 
 export function BusinessesPage() {
   const businesses = useBusinesses()
@@ -27,7 +31,13 @@ export function BusinessesPage() {
         </Button>
       </Stack>
 
-      {businesses.isError && <Alert severity="error">{businesses.error.message}</Alert>}
+      {businesses.isError && (
+        <Alert severity={isForbidden(businesses.error) ? 'info' : 'error'}>
+          {isForbidden(businesses.error)
+            ? 'Ο λογαριασμός σας είναι λογαριασμός τράπεζας και δεν έχει επιχειρήσεις.'
+            : 'Οι επιχειρήσεις δεν φορτώθηκαν. Ανανεώστε τη σελίδα.'}
+        </Alert>
+      )}
 
       {businesses.isPending && (
         <Stack spacing={2}>

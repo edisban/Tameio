@@ -11,7 +11,21 @@ export default defineConfig({
       '/api': 'http://localhost:8080',
     },
   },
+  // The production build served locally (used by the e2e tests in CI); it reuses the /api proxy above
+  preview: {
+    port: 5180,
+    strictPort: true,
+  },
   test: {
-    environment: 'node',
+    // Components render into a simulated browser; the API is answered by MSW in each test
+    environment: 'jsdom',
+    setupFiles: ['./src/test/setup.ts'],
+    include: ['src/**/*.test.{ts,tsx}'],
+    coverage: {
+      provider: 'v8',
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: ['src/test/**', 'src/main.tsx', 'src/vite-env.d.ts', 'src/**/*.test.{ts,tsx}'],
+      reporter: ['text-summary', 'html'],
+    },
   },
 })

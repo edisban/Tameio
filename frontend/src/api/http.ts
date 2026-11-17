@@ -18,7 +18,8 @@ async function request(path: string, init: RequestInit, accept: string): Promise
   const token = accessToken()
   if (token) headers.set('Authorization', `Bearer ${token}`)
 
-  const response = await fetch(path, { ...init, headers })
+  // Resolved against the page's own origin, which is what the browser does anyway and what Node's fetch needs in tests
+  const response = await fetch(new URL(path, window.location.origin), { ...init, headers })
   if (!response.ok) {
     const isProblem = response.headers.get('Content-Type')?.includes('json')
     const problem: Problem = isProblem ? await response.json() : { status: response.status }

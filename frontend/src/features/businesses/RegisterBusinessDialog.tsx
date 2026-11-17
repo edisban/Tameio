@@ -29,16 +29,22 @@ export function RegisterBusinessDialog({ open, onClose }: { open: boolean; onClo
       await register.mutateAsync(values)
       close()
     } catch (e) {
-      // Field errors from the API (e.g. a duplicate ΑΦΜ) appear under the field they belong to
-      if (e instanceof ApiError && e.problem.errors) {
-        for (const [field, message] of Object.entries(e.problem.errors)) {
-          if (field === 'afm' || field === 'name') form.setError(field, { message })
-        }
+      if (!(e instanceof ApiError)) return
+      // A taken ΑΦΜ is about that field, so it is shown under it
+      if (e.problem.status === 409) {
+        form.setError('afm', { message: 'Υπάρχει ήδη επιχείρηση με αυτό το ΑΦΜ' })
+        return
+      }
+      // Field errors from the API's own validation appear under the field they belong to
+      for (const [field, message] of Object.entries(e.problem.errors ?? {})) {
+        if (field === 'afm' || field === 'name') form.setError(field, { message })
       }
     }
   })
 
-  const apiError = register.error instanceof ApiError && !register.error.problem.errors ? register.error.message : null
+  // Anything not tied to a field (the server is down, an unexpected answer) is shown above the form
+  const handledOnField = register.error instanceof ApiError && (register.error.problem.status === 409 || !!register.error.problem.errors)
+  const apiError = register.error && !handledOnField ? 'Η καταχώριση δεν ολοκληρώθηκε. Δοκιμάστε ξανά.' : null
 
   return (
     <Dialog open={open} onClose={close} fullWidth maxWidth="xs">
