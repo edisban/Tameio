@@ -5,9 +5,6 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
-# Public sign-in settings are baked into the bundle; a deployment passes its own
-ARG VITE_OIDC_AUTHORITY
-ARG VITE_OIDC_CLIENT_ID
 RUN npm run build
 
 FROM nginx:1.31.8-alpine

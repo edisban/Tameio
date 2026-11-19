@@ -13,7 +13,7 @@ import java.util.Optional;
 @EnableJpaAuditing(auditorAwareRef = "currentAuditor")
 class JpaAuditingConfig {
 
-    /** The signed-in user's Keycloak id, or "system" for work no user started (jobs, event handlers). */
+    /** The signed-in user's id, or "system" for work no user started (jobs, event handlers). */
     @Bean
     AuditorAware<String> currentAuditor() {
         return () -> Optional.ofNullable(SecurityContextHolder.getContext().getAuthentication())

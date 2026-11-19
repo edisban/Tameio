@@ -2,47 +2,43 @@
 
 A platform for Greek small businesses. It keeps their books, sends their invoices to myDATA (AADE), and lets them apply for a business loan from a bank (here the fictional **Kyma Bank · demo**).
 
-> Work in progress. Sign-in, business registration and document upload work today. See [docs/design.md](docs/design.md) for the full plan and [docs/adr/](docs/adr/) for the decisions behind it.
+> Work in progress. The plan is in [docs/design.md](docs/design.md), the decisions behind it in [docs/adr/](docs/adr/).
 
 ## What works today
 
-- Sign in or sign up through Keycloak (OpenID Connect, PKCE)
-- Register a business with its ΑΦΜ, checked on both sides with the official check digit
-- List only the businesses you belong to; anyone else gets 404, not 403, so the API does not reveal that a business exists
-- Upload receipts and invoices (PDF, JPEG, PNG, up to 10 MB) to S3-compatible storage, list them page by page and open them
-- The file type is read from the file's first bytes, not from its name; the same file cannot be uploaded twice
-- Errors follow RFC 9457 (`application/problem+json`)
+1. **Create an account and sign in.** Passwords are stored as Argon2id hashes. The session is a signed token in an HttpOnly cookie, with CSRF protection; five wrong passwords lock the account for 15 minutes.
+2. **Register your business** with its ΑΦΜ, checked against the official check digit. You only ever see your own businesses.
+3. **Upload receipts and invoices** (PDF, JPEG or PNG, up to 10 MB), see them in a list and open them. The file type is read from the content, not the name, and the same file cannot be uploaded twice.
+4. **Document AI** (separate service, not yet connected to the app) reads a receipt with OCR and pulls out the ΑΦΜ, date, amounts and VAT, and suggests an expense category.
+
+Coming next: the app sends each upload to document AI and shows what it found; then accounting, myDATA and loan applications.
 
 ## Stack
 
 | Layer | Choice |
 | --- | --- |
-| Backend | Java 21, Spring Boot 4, Spring Modulith, Spring Security (OAuth2 resource server), Spring Data JPA |
+| Backend | Java 21, Spring Boot 4, Spring Modulith, Spring Security (JWT sessions in HttpOnly cookies, CSRF), Spring Data JPA |
 | Database | PostgreSQL 17, schema owned by Flyway (`ddl-auto: validate`) |
-| File storage | Any S3-compatible store through the AWS SDK; SeaweedFS locally |
-| Identity | Keycloak 26 (realm imported from `infra/keycloak`) |
+| File storage | SeaweedFS in a container. The code talks to it with the standard S3 protocol, so production can use any S3-compatible service without code changes |
 | Frontend | React 19, TypeScript, Vite, MUI, TanStack Query, React Hook Form + Zod |
 | Document AI | Python 3.12, FastAPI, Tesseract OCR (Greek), scikit-learn |
 | Tests | JUnit 5, Testcontainers, MockMvc, JaCoCo; Vitest, Testing Library, MSW; Playwright |
-| CI | GitHub Actions: backend `verify`, frontend lint + test + build, Playwright end to end |
+| CI | GitHub Actions: backend, frontend, document AI and end-to-end jobs |
 
 ## Architecture
 
 ```mermaid
 flowchart LR
     browser[React app<br/>Vite · MUI · TanStack Query]
-    keycloak[Keycloak<br/>OpenID Connect]
     subgraph api[Spring Boot · modular monolith]
         identity[identity]
         documents[documents]
         platform[platform<br/>security · errors · persistence · storage]
     end
     db[(PostgreSQL<br/>Flyway)]
-    s3[(S3 storage<br/>SeaweedFS locally)]
+    s3[(File storage<br/>SeaweedFS)]
 
-    browser -- sign in, PKCE --> keycloak
-    browser -- REST + JWT --> api
-    api -- checks token signature --> keycloak
+    browser -- REST, session cookie --> api
     api --> db
     api --> s3
     documents -- checks membership --> identity
@@ -64,15 +60,16 @@ Requirements: Docker only.
 docker compose --profile app up -d --build
 ```
 
-Everything runs in containers: the React app (nginx), the Spring Boot API, document AI (Python),
-PostgreSQL, Keycloak and S3 storage.
+Open http://localhost:5180 and create an account with **Εγγραφή**. Everything runs in containers:
+the React app (nginx), the Spring Boot API, document AI (Python), PostgreSQL and file storage (SeaweedFS).
+There are no ready-made accounts or sample data.
 
 ### Work on the code
 
 Requirements: Docker, JDK 21 or newer, Node 22.
 
 ```bash
-# 1. Infrastructure only: Postgres (5433), Keycloak (8180), S3 storage (8333), document AI (8090)
+# 1. Infrastructure only: Postgres (5433), file storage (8333), document AI (8090)
 docker compose up -d
 
 # 2. Backend on http://localhost:8080, restarts quickly as you change it
@@ -85,20 +82,10 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5180 and sign in with a demo user:
-
-| User | Password | Role |
-| --- | --- | --- |
-| `maria` | `maria` | Business owner |
-| `giorgos` | `giorgos` | Bank analyst (cannot reach the business API) |
-
-These users exist only in the local dev realm.
-
-Useful links while it runs:
+Then open http://localhost:5180. Useful links while it runs:
 
 - API docs: http://localhost:8080/swagger-ui.html
 - Health: http://localhost:8080/actuator/health
-- Keycloak admin: http://localhost:8180 (admin / admin)
 - Document AI docs: http://localhost:8090/docs
 
 ## Tests
@@ -108,9 +95,9 @@ Useful links while it runs:
 | Backend unit and API | Domain rules, security, the module structure, every endpoint against real Postgres and S3 storage in containers. JaCoCo fails the build below 80% line coverage. | `cd backend && ./mvnw verify` (needs Docker) |
 | Frontend components | Forms, pages and error messages in a simulated browser, with the API faked by MSW | `cd frontend && npm test` (`npm run test:coverage` for coverage) |
 | Document AI | Field extraction rules, real OCR, and a quality gate: the build fails if the classifier's macro F1 on unseen shops drops | `cd ml/document-ai && pytest` |
-| End to end | The real app in Chromium through Keycloak, the API, Postgres and storage | start the stack and the backend, then `cd frontend && npm run e2e` |
+| End to end | The real app in Chromium: sign-up, the API, Postgres and storage. Each test creates its own account. | start the stack and the backend, then `cd frontend && npm run e2e` |
 
-CI runs all three on every push; the end-to-end job starts the whole stack with `docker compose up --wait`.
+CI runs all four on every push; the end-to-end job starts the whole stack with `docker compose --profile app up --wait`.
 
 ## Configuration
 
@@ -121,7 +108,8 @@ The backend reads its settings from environment variables prefixed `TAMEIO_`. Th
 | `TAMEIO_DB_URL` | `jdbc:postgresql://localhost:5433/tameio` |
 | `TAMEIO_DB_USERNAME` | `tameio` |
 | `TAMEIO_DB_PASSWORD` | `tameio` |
-| `TAMEIO_KEYCLOAK_ISSUER` | `http://localhost:8180/realms/tameio` |
+| `TAMEIO_JWT_SECRET` | a development-only value; production must set its own (32 bytes or more) |
+| `TAMEIO_SECURE_COOKIE` | `false` (production: `true`, cookies over HTTPS only) |
 | `TAMEIO_S3_ENDPOINT` | `http://localhost:8333` |
 | `TAMEIO_S3_REGION` | `eu-central-1` |
 | `TAMEIO_S3_BUCKET` | `tameio-documents` |
@@ -134,6 +122,6 @@ The backend reads its settings from environment variables prefixed `TAMEIO_`. Th
 backend/    Spring Boot app, one package per module (platform, identity, documents, ...)
 ml/         Python services; document-ai reads receipts and suggests an expense category
 frontend/   React app, one folder per feature
-infra/      Keycloak realm, S3 storage identities and, later, the rest of the local infrastructure
+infra/      Local infrastructure settings (file storage access keys)
 docs/       Design document and architecture decision records
 ```

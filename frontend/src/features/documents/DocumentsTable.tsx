@@ -2,6 +2,7 @@ import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined'
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined'
 import {
   Alert,
+  Box,
   Card,
   CardContent,
   Chip,
@@ -26,6 +27,28 @@ const statusLabel: Record<DocumentStatus, string> = {
 }
 
 const PAGE_SIZE = 20
+
+/** A small coloured tile with the file's kind, so PDFs and photos are told apart at a glance. */
+function FileTypeTile({ mediaType }: { mediaType: string }) {
+  const isPdf = mediaType === 'application/pdf'
+  return (
+    <Box
+      aria-hidden
+      sx={{
+        width: 36,
+        height: 36,
+        borderRadius: 1.5,
+        flexShrink: 0,
+        display: 'grid',
+        placeItems: 'center',
+        bgcolor: isPdf ? 'error.light' : 'primary.light',
+        color: isPdf ? 'error.main' : 'primary.main',
+      }}
+    >
+      {isPdf ? <DescriptionOutlinedIcon fontSize="small" /> : <ImageOutlinedIcon fontSize="small" />}
+    </Box>
+  )
+}
 
 // The icon beside the name already shows the type, so on phones the column gives its room to the name
 const typeColumn = { display: { xs: 'none', sm: 'table-cell' } }
@@ -94,13 +117,14 @@ export function DocumentsTable({ businessId }: { businessId: string }) {
               {content.map(document => (
                 <TableRow key={document.id} hover>
                   <TableCell sx={{ minWidth: 200, maxWidth: 360 }}>
-                    <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                      {document.mediaType === 'application/pdf' ? (
-                        <DescriptionOutlinedIcon fontSize="small" color="action" />
-                      ) : (
-                        <ImageOutlinedIcon fontSize="small" color="action" />
-                      )}
-                      <Link component="button" onClick={() => void open(document)} sx={{ textAlign: 'left', overflowWrap: 'anywhere' }}>
+                    <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+                      <FileTypeTile mediaType={document.mediaType} />
+                      <Link
+                        component="button"
+                        onClick={() => void open(document)}
+                        underline="hover"
+                        sx={{ textAlign: 'left', overflowWrap: 'anywhere', fontWeight: 600, color: 'text.primary' }}
+                      >
                         {document.filename}
                       </Link>
                     </Stack>
@@ -111,7 +135,11 @@ export function DocumentsTable({ businessId }: { businessId: string }) {
                   </TableCell>
                   <TableCell sx={{ whiteSpace: 'nowrap' }}>{formatDateTime(document.uploadedAt)}</TableCell>
                   <TableCell>
-                    <Chip size="small" label={statusLabel[document.status]} />
+                    <Chip
+                      size="small"
+                      label={statusLabel[document.status]}
+                      sx={{ bgcolor: 'warning.light', color: 'warning.main' }}
+                    />
                   </TableCell>
                 </TableRow>
               ))}

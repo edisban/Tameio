@@ -31,6 +31,16 @@ class ApiExceptionHandler extends ResponseEntityExceptionHandler {
         return problem(HttpStatus.NOT_FOUND, "Not found", e.getMessage());
     }
 
+    @ExceptionHandler(UnauthorizedException.class)
+    ProblemDetail unauthorized(UnauthorizedException e) {
+        return problem(HttpStatus.UNAUTHORIZED, "Unauthorized", e.getMessage());
+    }
+
+    @ExceptionHandler(TooManyRequestsException.class)
+    ProblemDetail tooManyRequests(TooManyRequestsException e) {
+        return problem(HttpStatus.TOO_MANY_REQUESTS, "Too many attempts", e.getMessage());
+    }
+
     @ExceptionHandler(BadRequestException.class)
     ProblemDetail badRequest(BadRequestException e) {
         return problem(HttpStatus.BAD_REQUEST, "Invalid request", e.getMessage());

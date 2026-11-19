@@ -18,6 +18,7 @@ import static com.tameio.TestUsers.businessUser;
 import static com.tameio.TestUsers.freshAfm;
 import static com.tameio.TestUsers.user;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 
 /**
  * The businesses API end to end: real HTTP handling, real security rules and a real PostgreSQL in a
@@ -32,7 +33,7 @@ class BusinessApiTest {
     MockMvcTester mvc;
 
     private MvcTestResult register(RequestPostProcessor user, String afm, String name) {
-        return mvc.post().uri("/api/v1/businesses").with(user)
+        return mvc.post().uri("/api/v1/businesses").with(user).with(csrf())
             .contentType(MediaType.APPLICATION_JSON)
             .content("""
                 {"afm": "%s", "name": "%s"}""".formatted(afm, name))
@@ -41,10 +42,10 @@ class BusinessApiTest {
 
     @Test
     void registersABusinessAndMakesTheUserItsOwner() throws Exception {
-        RequestPostProcessor maria = businessUser();
+        RequestPostProcessor emma = businessUser();
         String afm = freshAfm();
 
-        MvcTestResult created = register(maria, afm, "  Καφέ Το Στέκι ");
+        MvcTestResult created = register(emma, afm, "  Καφέ Το Στέκι ");
 
         assertThat(created).hasStatus(HttpStatus.CREATED);
         String id = JsonPath.read(created.getResponse().getContentAsString(), "$.id");
@@ -52,10 +53,10 @@ class BusinessApiTest {
         assertThat(created).bodyJson().extractingPath("$.name").isEqualTo("Καφέ Το Στέκι");
         assertThat(created).bodyJson().extractingPath("$.role").isEqualTo("OWNER");
 
-        assertThat(mvc.get().uri("/api/v1/businesses").with(maria))
+        assertThat(mvc.get().uri("/api/v1/businesses").with(emma))
             .hasStatusOk()
             .bodyJson().extractingPath("$[*].afm").asArray().containsExactly(afm);
-        assertThat(mvc.get().uri("/api/v1/businesses/{id}", id).with(maria))
+        assertThat(mvc.get().uri("/api/v1/businesses/{id}", id).with(emma))
             .hasStatusOk()
             .bodyJson().extractingPath("$.afm").isEqualTo(afm);
     }
@@ -116,7 +117,7 @@ class BusinessApiTest {
         assertThat(mvc.get().uri("/api/v1/me").with(businessUser()))
             .hasStatusOk()
             .bodyJson().satisfies(json -> {
-                assertThat(json).extractingPath("$.name").isEqualTo("Maria Test");
+                assertThat(json).extractingPath("$.name").isEqualTo("Emma Test");
                 assertThat(json).extractingPath("$.roles").asArray().containsExactly("BUSINESS");
             });
     }

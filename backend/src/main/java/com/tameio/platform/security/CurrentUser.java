@@ -3,8 +3,8 @@ package com.tameio.platform.security;
 import org.springframework.security.oauth2.jwt.Jwt;
 
 /**
- * The signed-in user as this service sees them. The id is Keycloak's stable subject, which is what the
- * database stores; name and email are for display only and may change in Keycloak at any time.
+ * The signed-in user, read from the session token. The id is the user account's id, which is what other
+ * tables store; name and email are as they were at sign-in and are for display only.
  */
 public record CurrentUser(String id, String name, String email) {
 

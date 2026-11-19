@@ -11,8 +11,8 @@ import java.util.concurrent.ThreadLocalRandom;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 
 /**
- * Signed-in users and test data for API tests. Tokens are built in the test (no Keycloak needed) with
- * the claims Keycloak would send. Each call returns a new user, so tests never share data.
+ * Signed-in users and test data for API tests. Tokens are built in the test with the claims a real
+ * session token carries. Each call returns a new user, so tests never share data.
  */
 public final class TestUsers {
 
@@ -22,7 +22,7 @@ public final class TestUsers {
     public static RequestPostProcessor user(String... roles) {
         String id = UUID.randomUUID().toString();
         return jwt()
-            .jwt(token -> token.subject(id).claim("name", "Maria Test").claim("email", "maria@example.com"))
+            .jwt(token -> token.subject(id).claim("name", "Emma Test").claim("email", "emma@example.com"))
             .authorities(Arrays.stream(roles).map(role -> (GrantedAuthority) new SimpleGrantedAuthority("ROLE_" + role)).toList());
     }
 

@@ -14,13 +14,6 @@ spring:
       ddl-auto: validate
     # No lazy loading during view rendering: every query happens inside a service transaction
     open-in-view: false
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          issuer-uri: ${TAMEIO_KEYCLOAK_ISSUER:http://localhost:8180/realms/tameio}
-          # Tokens must be meant for this API, not just issued by our Keycloak
-          audiences: tameio-api
   servlet:
     multipart:
       # Uploads are read into memory to check their type and hash, so they stay small
@@ -42,6 +35,11 @@ spring:
       enabled: true
 
 tameio:
+  auth:
+    # Development value only; production must set its own secret (see application-prod.yml)
+    jwt-secret: ${TAMEIO_JWT_SECRET:dev-only-secret-do-not-use-in-production-0123456789}
+    session-ttl: 8h
+    secure-cookie: ${TAMEIO_SECURE_COOKIE:false}
   storage:
     endpoint: ${TAMEIO_S3_ENDPOINT:http://localhost:8333}
     region: ${TAMEIO_S3_REGION:eu-central-1}

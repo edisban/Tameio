@@ -1,9 +1,8 @@
 import { expect, test } from '@playwright/test'
-import { fixture, registerBusiness, signIn, users } from './support'
+import { fixture, registerBusiness, signUp } from './support'
 
 test.beforeEach(async ({ page }) => {
-  await signIn(page, users.owner)
-  // Tests run in parallel as the same user, so each one opens its own business by its unique ΑΦΜ
+  await signUp(page)
   const afm = await registerBusiness(page, 'Καφέ Δοκιμής')
   await page.getByRole('link', { name: new RegExp(`ΑΦΜ ${afm}`) }).click()
   await expect(page.getByRole('heading', { name: 'Καφέ Δοκιμής' })).toBeVisible()

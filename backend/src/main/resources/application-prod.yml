@@ -4,13 +4,11 @@ spring:
     url: ${TAMEIO_DB_URL}
     username: ${TAMEIO_DB_USERNAME}
     password: ${TAMEIO_DB_PASSWORD}
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          issuer-uri: ${TAMEIO_KEYCLOAK_ISSUER}
 
 tameio:
+  auth:
+    jwt-secret: ${TAMEIO_JWT_SECRET}
+    secure-cookie: true
   storage:
     endpoint: ${TAMEIO_S3_ENDPOINT}
     region: ${TAMEIO_S3_REGION}

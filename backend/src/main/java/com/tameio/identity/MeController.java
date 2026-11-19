@@ -16,8 +16,6 @@ import java.util.List;
 @RestController
 class MeController {
 
-    record MeResponse(String id, String name, String email, List<String> roles) {}
-
     @Operation(summary = "Who the signed-in user is, as the API sees them")
     @GetMapping("/api/v1/me")
     MeResponse me(@AuthenticationPrincipal Jwt jwt, Authentication authentication) {

@@ -9,8 +9,6 @@ Thumbs.db
 .env
 .env.local
 .env.*.local
-# Except the frontend's public defaults: a browser app has no secrets (it signs in with PKCE)
-!frontend/.env
 
 # Build output (each app also has its own ignore file)
 backend/target/

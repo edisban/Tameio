@@ -1,6 +1,6 @@
 # 0004. Keycloak for identity
 
-Status: accepted · 2026-11-16
+Status: superseded by [0007](0007-sign-in-inside-the-core.md) · 2026-11-17
 
 ## Context
 

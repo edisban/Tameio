@@ -90,7 +90,7 @@ flowchart LR
     K <--> ML["ML services (Python)<br/>document AI · classifier<br/>risk · anomaly"]
     APP --> LLM["LLM serving<br/>local open model"]
     APP --> AADE["myDATA<br/>test environment"]
-    KC["Keycloak"] -.-> GW
+    APP -. "sign-in, session cookie" .- W
     APP -. telemetry .-> OBS["OpenTelemetry → Prometheus,<br/>Grafana, Tempo, Loki"]
 ```
 
@@ -103,7 +103,7 @@ structure calls for it.
 
 | Module | Owns |
 | --- | --- |
-| `identity` | Tenants, memberships and roles on top of Keycloak |
+| `identity` | User accounts and sign-in, tenants, memberships and roles |
 | `documents` | Uploads, storage, processing status, extracted fields and human review |
 | `accounting` | Invoices, expense classifications, the ledger, VAT summaries, cash-flow forecast |
 | `mydata` | The myDATA integration: fetching, sending, matching, credentials, retries |
@@ -209,7 +209,7 @@ the credit model for unequal outcomes between groups ([ADR 0005](adr/0005-human-
 
 ## 10. Security and compliance
 
-- Sign-in with Keycloak (OpenID Connect); roles and tenant come from the token.
+- Sign-in inside the core: Argon2id password hashes, a signed session token in an HttpOnly cookie, CSRF protection and account lock-out ([ADR 0007](adr/0007-sign-in-inside-the-core.md)).
 - Tenant isolation in the application and in the database (row-level security).
 - Secrets in Vault; documents encrypted at rest in S3 storage; TLS everywhere outside local development.
 - An append-only audit log for every view of a case and every decision.
@@ -230,7 +230,7 @@ model health.
 | Level | Tools |
 | --- | --- |
 | Unit | JUnit 5, pytest |
-| Integration | Testcontainers (PostgreSQL, S3 storage, Kafka, RabbitMQ, Keycloak) |
+| Integration | Testcontainers (PostgreSQL, S3 storage, Kafka, RabbitMQ) |
 | Contracts between core and ML services | Spring Cloud Contract or Pact |
 | End to end | Playwright |
 | Load | k6 |
@@ -243,7 +243,7 @@ Each phase ends with something that runs and can be demonstrated.
 | Phase | Scope | Done when |
 | --- | --- | --- |
 | 0 | This design, first ADRs, repository and CI skeleton | Reviewed and pushed |
-| 1 | Core skeleton: Keycloak, tenants, document upload to S3 storage, React app | A business signs in and uploads a document |
+| 1 | Core skeleton: sign-in, tenants, document upload to S3 storage, React app | A business signs in and uploads a document |
 | 2 | Document AI v1: OCR, validation rules, baseline expense classifier | Fields and a classification appear for a receipt |
 | 3 | YOLO fine-tuning and the review screen with boxes over the document | mAP reported; corrections saved as training data |
 | 4 | myDATA: fetch, classify, issue, match by MARK, with Resilience4j | Round trip against the test environment |

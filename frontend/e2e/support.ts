@@ -1,25 +1,20 @@
 import { expect, type Page } from '@playwright/test'
 import path from 'node:path'
 
-/**
- * Users from infra/keycloak/tameio-realm.json. The tests sign in as their own business user, so the
- * data they create never clutters the demo account (maria).
- */
-export const users = {
-  owner: { username: 'e2e', password: 'e2e' },
-  analyst: { username: 'giorgos', password: 'giorgos' },
-} as const
-
 export const fixture = (name: string) => path.join(import.meta.dirname, 'fixtures', name)
 
-/** Opens the app and signs in on the Keycloak page it redirects to. */
-export async function signIn(page: Page, user: { username: string; password: string }) {
+/**
+ * Opens the app, which sends a signed-out visitor to the sign-in page, and signs up a new account.
+ * Every test gets its own account, so tests running in parallel never see each other's data.
+ */
+export async function signUp(page: Page) {
   await page.goto('/')
-  await page.waitForURL(/\/realms\/tameio\//)
-  // Keycloak's own page: its field ids stay the same in every language, unlike the labels
-  await page.locator('#username').fill(user.username)
-  await page.locator('#password').fill(user.password)
-  await page.locator('#kc-login').click()
+  await page.waitForURL('/sign-in')
+  await page.getByRole('link', { name: 'Εγγραφή' }).click()
+  await page.getByLabel('Ονοματεπώνυμο').fill('Δοκιμαστικός Χρήστης')
+  await page.getByLabel('Email').fill(`e2e-${crypto.randomUUID()}@example.com`)
+  await page.getByLabel('Κωδικός').fill('e2e-password')
+  await page.getByRole('button', { name: 'Δημιουργία λογαριασμού' }).click()
   await page.waitForURL('/businesses')
 }
 

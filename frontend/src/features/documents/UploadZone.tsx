@@ -1,7 +1,7 @@
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
 import ErrorRoundedIcon from '@mui/icons-material/ErrorRounded'
 import UploadFileRoundedIcon from '@mui/icons-material/UploadFileRounded'
-import { Box, Button, CircularProgress, List, ListItem, ListItemIcon, ListItemText, Typography } from '@mui/material'
+import { Avatar, Box, Button, CircularProgress, List, ListItem, ListItemIcon, ListItemText, Typography } from '@mui/material'
 import { useRef, useState, type DragEvent } from 'react'
 import { useUploadDocument } from './api'
 import { ACCEPT_ATTRIBUTE, fileProblem, uploadErrorMessage } from './files'
@@ -56,25 +56,29 @@ export function UploadZone({ businessId }: { businessId: string }) {
         onDragLeave={() => setDragging(false)}
         onDrop={onDrop}
         sx={{
-          border: '2px dashed',
-          borderColor: dragging ? 'primary.main' : 'divider',
-          bgcolor: dragging ? 'action.hover' : 'background.paper',
+          border: '1.5px dashed',
+          borderColor: dragging ? 'primary.main' : '#c5d0e2',
+          bgcolor: dragging ? 'primary.light' : 'background.paper',
           borderRadius: 3,
           p: { xs: 3, sm: 4 },
           display: 'flex',
-          flexDirection: 'column',
+          flexDirection: { xs: 'column', sm: 'row' },
           alignItems: 'center',
-          gap: 1,
-          textAlign: 'center',
+          gap: { xs: 1.5, sm: 3 },
+          textAlign: { xs: 'center', sm: 'left' },
           transition: 'border-color 120ms, background-color 120ms',
         }}
       >
-        <UploadFileRoundedIcon color="primary" sx={{ fontSize: 40 }} />
-        <Typography sx={{ fontWeight: 600 }}>Σύρετε εδώ αποδείξεις, τιμολόγια ή καταστάσεις</Typography>
-        <Typography variant="body2" color="text.secondary">
-          PDF, JPEG ή PNG, έως 10 MB το καθένα
-        </Typography>
-        <Button variant="outlined" sx={{ mt: 1 }} onClick={() => input.current?.click()}>
+        <Avatar sx={{ width: 56, height: 56, bgcolor: 'primary.light', color: 'primary.main' }}>
+          <UploadFileRoundedIcon fontSize="large" />
+        </Avatar>
+        <Box sx={{ flexGrow: 1 }}>
+          <Typography sx={{ fontWeight: 600 }}>Σύρετε εδώ αποδείξεις, τιμολόγια ή καταστάσεις</Typography>
+          <Typography variant="body2" color="text.secondary">
+            PDF, JPEG ή PNG, έως 10 MB το καθένα. Τα ποσά και ο ΦΠΑ θα διαβάζονται αυτόματα.
+          </Typography>
+        </Box>
+        <Button variant="contained" sx={{ flexShrink: 0 }} onClick={() => input.current?.click()}>
           Επιλογή αρχείων
         </Button>
         <input

@@ -25,6 +25,7 @@ import java.util.UUID;
 import static com.tameio.TestUsers.businessUser;
 import static com.tameio.TestUsers.freshAfm;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 
 /**
  * The documents API end to end, with PostgreSQL and S3-compatible storage in containers: what is
@@ -48,7 +49,7 @@ class DocumentApiTest {
     @BeforeEach
     void registerABusiness() throws Exception {
         owner = businessUser();
-        MvcTestResult created = mvc.post().uri("/api/v1/businesses").with(owner)
+        MvcTestResult created = mvc.post().uri("/api/v1/businesses").with(owner).with(csrf())
             .contentType(MediaType.APPLICATION_JSON)
             .content("""
                 {"afm": "%s", "name": "Καφέ Το Στέκι"}""".formatted(freshAfm()))
@@ -62,7 +63,7 @@ class DocumentApiTest {
     }
 
     private MvcTestResult upload(RequestPostProcessor user, String filename, String claimedType, byte[] content) {
-        return mvc.post().uri("/api/v1/businesses/{id}/documents", businessId).with(user)
+        return mvc.post().uri("/api/v1/businesses/{id}/documents", businessId).with(user).with(csrf())
             .multipart()
             .file(new MockMultipartFile("file", filename, claimedType, content))
             .exchange();
@@ -130,7 +131,7 @@ class DocumentApiTest {
 
     @Test
     void keepsOnlyTheFileNameFromAPath() {
-        assertThat(upload(owner, "C:\\Users\\maria\\Desktop\\receipt.pdf", "application/pdf", pdf()))
+        assertThat(upload(owner, "C:\\Users\\emma\\Desktop\\receipt.pdf", "application/pdf", pdf()))
             .hasStatus(HttpStatus.CREATED)
             .bodyJson().extractingPath("$.filename").isEqualTo("receipt.pdf");
     }

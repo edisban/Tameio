@@ -5,7 +5,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5180,
-    strictPort: true, // Keycloak only accepts redirects back to this exact port
+    strictPort: true,
     // The browser calls /api on the same origin; Vite forwards it to Spring Boot, so no CORS is needed
     proxy: {
       '/api': 'http://localhost:8080',

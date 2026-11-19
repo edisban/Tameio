@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test'
 
 /**
- * End-to-end tests through the real stack: Keycloak, the Spring Boot API, PostgreSQL and S3 storage.
+ * End-to-end tests through the real stack: the Spring Boot API, PostgreSQL and S3 storage.
  * Either run everything in containers (docker compose --profile app up -d --build) and set
  * E2E_EXTERNAL=1, or start the infrastructure and the backend yourself and let Playwright start Vite.
  */

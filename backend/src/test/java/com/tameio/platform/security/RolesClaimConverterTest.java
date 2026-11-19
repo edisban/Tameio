@@ -11,13 +11,13 @@ import java.util.function.Consumer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class KeycloakRolesConverterTest {
+class RolesClaimConverterTest {
 
-    private final KeycloakRolesConverter converter = new KeycloakRolesConverter();
+    private final RolesClaimConverter converter = new RolesClaimConverter();
 
     private static Jwt token(Consumer<Map<String, Object>> claims) {
         return Jwt.withTokenValue("token")
-            .header("alg", "RS256")
+            .header("alg", "HS256")
             .subject("user-1")
             .issuedAt(Instant.now())
             .expiresAt(Instant.now().plusSeconds(300))
@@ -30,29 +30,18 @@ class KeycloakRolesConverterTest {
     }
 
     @Test
-    void turnsRealmRolesIntoSpringRoles() {
-        Jwt jwt = token(claims -> claims.put("realm_access", Map.of("roles", List.of("business", "offline_access"))));
-
-        assertThat(authorities(jwt)).containsExactly("ROLE_BUSINESS", "ROLE_OFFLINE_ACCESS");
+    void turnsRolesIntoSpringRoles() {
+        assertThat(authorities(token(claims -> claims.put("roles", List.of("business", "ANALYST")))))
+            .containsExactly("ROLE_BUSINESS", "ROLE_ANALYST");
     }
 
     @Test
     void givesNoRolesWhenTheTokenHasNone() {
         assertThat(authorities(token(claims -> {}))).isEmpty();
-        assertThat(authorities(token(claims -> claims.put("realm_access", Map.of())))).isEmpty();
     }
 
     @Test
     void ignoresARolesClaimOfTheWrongShape() {
-        Jwt jwt = token(claims -> claims.put("realm_access", Map.of("roles", "admin")));
-
-        assertThat(authorities(jwt)).isEmpty();
-    }
-
-    @Test
-    void doesNotReadClientRolesAsRealmRoles() {
-        Jwt jwt = token(claims -> claims.put("resource_access", Map.of("account", Map.of("roles", List.of("manage-account")))));
-
-        assertThat(authorities(jwt)).isEmpty();
+        assertThat(authorities(token(claims -> claims.put("roles", "ADMIN")))).isEmpty();
     }
 }

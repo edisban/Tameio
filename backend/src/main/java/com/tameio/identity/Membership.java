@@ -13,7 +13,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-/** One person's role in one business. The person is a Keycloak user, referenced by their subject id. */
+/** One person's role in one business. The person is a {@link UserAccount}, referenced by its id. */
 @Entity
 @Table(name = "membership")
 @Getter
