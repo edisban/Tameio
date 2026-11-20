@@ -5,6 +5,7 @@ export const statusLabel: Record<DocumentStatus, string> = {
   READING: 'Διαβάζεται',
   READ: 'Διαβάστηκε',
   FAILED: 'Δεν διαβάστηκε',
+  REVIEWED: 'Ελέγχθηκε',
 }
 
 export const statusColour: Record<DocumentStatus, { bgcolor: string; color: string }> = {
@@ -12,6 +13,7 @@ export const statusColour: Record<DocumentStatus, { bgcolor: string; color: stri
   READING: { bgcolor: 'primary.light', color: 'primary.main' },
   READ: { bgcolor: 'success.light', color: 'success.main' },
   FAILED: { bgcolor: 'error.light', color: 'error.main' },
+  REVIEWED: { bgcolor: 'success.main', color: '#ffffff' },
 }
 
 export const failureLabel: Record<ReadFailure, string> = {

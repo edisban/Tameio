@@ -49,7 +49,7 @@ describe('BusinessDocumentsPage', () => {
     renderPage()
 
     const table = await screen.findByRole('table', { name: 'Παραστατικά' })
-    const row = within(table).getByRole('button', { name: 'απόδειξη-0042.pdf' }).closest('tr')!
+    const row = within(table).getByRole('link', { name: 'απόδειξη-0042.pdf' }).closest('tr')!
     expect(within(row).getByText('PDF · 1,5 KB · 17 Νοε 2026, 4:18 μ.μ.')).toBeInTheDocument()
     expect(within(row).getByText('Σε αναμονή ανάγνωσης')).toBeInTheDocument()
   })
@@ -66,7 +66,7 @@ describe('BusinessDocumentsPage', () => {
     )
     renderPage()
 
-    const row = (await screen.findByRole('button', { name: 'απόδειξη-0042.pdf' })).closest('tr')!
+    const row = (await screen.findByRole('link', { name: 'απόδειξη-0042.pdf' })).closest('tr')!
     expect(within(row).getByText('Καύσιμα')).toBeInTheDocument()
     expect(within(row).getByText('14 Νοε 2026')).toBeInTheDocument()
     expect(within(row).getByText('1.234,50 €')).toBeInTheDocument()
@@ -130,7 +130,7 @@ describe('BusinessDocumentsPage', () => {
     await user.upload(screen.getByLabelText('Επιλογή αρχείων', { selector: 'input' }), new File(['%PDF-1.7'], 'τιμολόγιο.pdf', { type: 'application/pdf' }))
 
     expect(await screen.findByText('Ανέβηκε')).toBeInTheDocument()
-    const row = (await screen.findByRole('button', { name: 'τιμολόγιο.pdf' })).closest('tr')!
+    const row = (await screen.findByRole('link', { name: 'τιμολόγιο.pdf' })).closest('tr')!
     expect(within(row).getByText(/· 8 B ·/)).toBeInTheDocument()
   })
 

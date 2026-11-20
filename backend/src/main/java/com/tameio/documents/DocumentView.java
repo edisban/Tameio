@@ -8,7 +8,7 @@ import java.util.UUID;
 /**
  * A document as the list shows it. Storage details such as the key and the hash stay on the server.
  *
- * @param summary what document AI read, once it has; null before
+ * @param summary the confirmed values once reviewed, before that what document AI read; null until then
  * @param failure why it could not be read, when it could not
  */
 public record DocumentView(UUID id, String filename, String mediaType, long sizeBytes, DocumentStatus status,
@@ -19,9 +19,17 @@ public record DocumentView(UUID id, String filename, String mediaType, long size
     }
 
     static DocumentView of(Document document) {
-        Reading reading = document.getStatus() == DocumentStatus.READ ? document.getReading() : null;
-        Summary summary = reading == null ? null
-            : new Summary(reading.getIssueDate(), reading.getIssuerAfm(), reading.getTotalAmount(), reading.getSuggestedCategory());
+        Summary summary = switch (document.getStatus()) {
+            case REVIEWED -> {
+                Review r = document.getReview();
+                yield new Summary(r.getIssueDate(), r.getIssuerAfm(), r.getTotalAmount(), r.getCategory().name());
+            }
+            case READ -> {
+                Reading r = document.getReading();
+                yield new Summary(r.getIssueDate(), r.getIssuerAfm(), r.getTotalAmount(), r.getSuggestedCategory());
+            }
+            default -> null;
+        };
         return new DocumentView(document.getId(), document.getFilename(), document.getMediaType(),
             document.getSizeBytes(), document.getStatus(), document.getCreatedAt(), summary, document.getReadFailure());
     }

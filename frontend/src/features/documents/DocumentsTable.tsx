@@ -22,7 +22,8 @@ import {
   Typography,
 } from '@mui/material'
 import { useState } from 'react'
-import { openDocument, useDocuments, useReadAgain, type DocumentItem } from './api'
+import { Link as RouterLink } from 'react-router'
+import { useDocuments, useReadAgain, type DocumentItem } from './api'
 import { categoryLabel } from './categories'
 import { formatBytes, formatDateTime, formatDay, formatMoney, typeLabel } from './files'
 import { failureLabel, statusColour, statusLabel } from './status'
@@ -78,16 +79,6 @@ function StatusCell({ businessId, document }: { businessId: string; document: Do
 export function DocumentsTable({ businessId }: { businessId: string }) {
   const [page, setPage] = useState(0)
   const documents = useDocuments(businessId, page, PAGE_SIZE)
-  const [openError, setOpenError] = useState<string | null>(null)
-
-  async function open(document: DocumentItem) {
-    setOpenError(null)
-    try {
-      await openDocument(businessId, document)
-    } catch (error) {
-      setOpenError((error as Error).message)
-    }
-  }
 
   if (documents.isPending) {
     return (
@@ -118,11 +109,6 @@ export function DocumentsTable({ businessId }: { businessId: string }) {
 
   return (
     <Stack spacing={1}>
-      {openError && (
-        <Alert severity="error" onClose={() => setOpenError(null)}>
-          Δεν ήταν δυνατό να ανοίξει το αρχείο: {openError}
-        </Alert>
-      )}
       <Card variant="outlined">
         <TableContainer>
           <Table aria-label="Παραστατικά">
@@ -142,8 +128,8 @@ export function DocumentsTable({ businessId }: { businessId: string }) {
                     <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
                       <FileTypeTile mediaType={document.mediaType} />
                       <Link
-                        component="button"
-                        onClick={() => void open(document)}
+                        component={RouterLink}
+                        to={`/businesses/${businessId}/documents/${document.id}`}
                         underline="hover"
                         sx={{ textAlign: 'left', overflowWrap: 'anywhere', fontWeight: 600, color: 'text.primary' }}
                       >

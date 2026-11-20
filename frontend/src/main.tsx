@@ -12,6 +12,7 @@ import { SignInPage } from './auth/SignInPage'
 import { SignUpPage } from './auth/SignUpPage'
 import { BusinessesPage } from './features/businesses/BusinessesPage'
 import { BusinessDocumentsPage } from './features/documents/BusinessDocumentsPage'
+import { DocumentPage } from './features/documents/DocumentPage'
 
 // When the session runs out, any call answers 401: forget the user, and RequireSession sends them to sign in
 function onError(error: Error) {
@@ -44,6 +45,7 @@ const router = createBrowserRouter([
       { index: true, element: <Navigate to="/businesses" replace /> },
       { path: 'businesses', element: <BusinessesPage /> },
       { path: 'businesses/:businessId', element: <BusinessDocumentsPage /> },
+      { path: 'businesses/:businessId/documents/:documentId', element: <DocumentPage /> },
     ],
   },
 ])

@@ -11,7 +11,9 @@ A platform for Greek small businesses. It keeps their books, sends their invoice
 3. **Upload receipts and invoices** (PDF, JPEG or PNG, up to 10 MB), see them in a list and open them. The file type is read from the content, not the name, and the same file cannot be uploaded twice.
 4. **Every upload is read by document AI**: OCR, the ΑΦΜ, date, amounts and VAT, checks on them (valid ΑΦΜ, net plus VAT equals the total) and a suggested expense category. The list shows each document's status and what was found; a document that could not be read can be sent again.
 
-Coming next: a review screen to accept or correct what was read, then accounting, myDATA and loan applications.
+5. **Check and confirm each document** on its own page: the file beside what was read, each field marked with how sure document AI was, the checks it ran, and the suggested category. The owner corrects what is wrong and confirms; amounts must add up to the cent. Every correction is stored with the model version as training data, and a document that could not be read can be filled in by hand.
+
+Coming next: accounting (books and VAT from confirmed documents), then myDATA and loan applications.
 
 ## Stack
 

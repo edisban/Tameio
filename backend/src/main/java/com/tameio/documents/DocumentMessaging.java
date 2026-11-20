@@ -85,7 +85,12 @@ class DocumentMessaging {
 
     @Bean
     DocumentAi documentAi(DocumentAiProperties properties, JsonMapper json) {
-        var client = HttpClient.newBuilder().connectTimeout(properties.connectTimeout()).build();
+        var client = HttpClient.newBuilder()
+            .connectTimeout(properties.connectTimeout())
+            // The JDK client otherwise asks to upgrade to HTTP/2 over plain HTTP (h2c), which uvicorn refuses,
+            // failing the first request on each connection
+            .version(HttpClient.Version.HTTP_1_1)
+            .build();
         var requests = new JdkClientHttpRequestFactory(client);
         // OCR of a multi-page scan takes a while; the timeout still bounds how long a consumer waits
         requests.setReadTimeout(properties.readTimeout());

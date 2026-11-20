@@ -8,6 +8,8 @@ public enum DocumentStatus {
     READING,
     /** Read: its fields, checks and suggested category are known. */
     READ,
-    /** Could not be read; {@link ReadFailure} says why. It can be sent for reading again. */
-    FAILED
+    /** Could not be read; {@link ReadFailure} says why. It can be sent for reading again, or reviewed by hand. */
+    FAILED,
+    /** A person confirmed its values; these go into the books. It can be reviewed again. */
+    REVIEWED
 }

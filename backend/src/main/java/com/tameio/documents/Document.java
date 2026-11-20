@@ -15,9 +15,11 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 /**
@@ -66,6 +68,16 @@ class Document extends AuditedEntity {
     /** Null until the document is read. */
     @Embedded
     private Reading reading;
+
+    /** Null until a person confirms the values. */
+    @Embedded
+    private Review review;
+
+    /** Where the confirmed values differ from what document AI read: training data. */
+    @ElementCollection
+    @CollectionTable(name = "document_correction", joinColumns = @JoinColumn(name = "document_id"))
+    @OrderColumn(name = "position")
+    private List<Correction> corrections = new ArrayList<>();
 
     @ElementCollection
     @CollectionTable(name = "document_check", joinColumns = @JoinColumn(name = "document_id"))
@@ -117,5 +129,47 @@ class Document extends AuditedEntity {
         status = DocumentStatus.UPLOADED;
         readFailure = null;
         readFailureDetail = null;
+    }
+
+    boolean canBeReviewed() {
+        return status == DocumentStatus.READ || status == DocumentStatus.FAILED || status == DocumentStatus.REVIEWED;
+    }
+
+    /**
+     * Records the values a person confirmed, and the fields where they differ from what document AI read.
+     * A second review replaces the first, corrections included, so the training data holds the final answer.
+     */
+    void review(ReviewRequest request, String reviewedBy, Instant reviewedAt) {
+        if (!canBeReviewed()) {
+            throw new IllegalStateException("A document can be reviewed once document AI is done with it");
+        }
+        review = Review.of(request, reviewedBy, reviewedAt);
+        status = DocumentStatus.REVIEWED;
+        corrections.clear();
+        if (reading == null) {
+            return;
+        }
+        String model = reading.getModelVersion();
+        compare("issuerAfm", reading.getIssuerAfm(), request.issuerAfm(), model);
+        compare("issueDate", text(reading.getIssueDate()), request.issueDate().toString(), model);
+        compare("netAmount", amount(reading.getNetAmount()), amount(request.netAmount()), model);
+        compare("vatAmount", amount(reading.getVatAmount()), amount(request.vatAmount()), model);
+        compare("totalAmount", amount(reading.getTotalAmount()), amount(request.totalAmount()), model);
+        compare("category", reading.getSuggestedCategory(), request.category().name(), model);
+    }
+
+    private void compare(String field, String suggested, String corrected, String model) {
+        if (!Objects.equals(suggested, corrected)) {
+            corrections.add(new Correction(field, suggested, corrected, model));
+        }
+    }
+
+    private static String text(Object value) {
+        return value == null ? null : value.toString();
+    }
+
+    /** 12.4 and 12.40 are the same amount. */
+    private static String amount(BigDecimal value) {
+        return value == null ? null : value.setScale(2).toPlainString();
     }
 }

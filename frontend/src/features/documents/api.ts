@@ -1,7 +1,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, apiBlob, type Page } from '../../api/http'
 
-export type DocumentStatus = 'UPLOADED' | 'READING' | 'READ' | 'FAILED'
+export type DocumentStatus = 'UPLOADED' | 'READING' | 'READ' | 'FAILED' | 'REVIEWED'
 export type ReadFailure = 'UNREADABLE' | 'REJECTED' | 'GAVE_UP'
 
 export type DocumentItem = {
@@ -41,6 +41,26 @@ export type DocumentDetails = {
     method: string
     text: string
   } | null
+  /** What a person confirmed */
+  review: {
+    reviewedAt: string
+    issuerAfm: string
+    issueDate: string
+    netAmount: number
+    vatAmount: number
+    totalAmount: number
+    category: string
+    correctedFields: string[]
+  } | null
+}
+
+export type ReviewInput = {
+  issuerAfm: string
+  issueDate: string
+  netAmount: number
+  vatAmount: number
+  totalAmount: number
+  category: string
 }
 
 /** Still with document AI: the list keeps asking until it has an answer */
@@ -72,6 +92,18 @@ export function useDocument(businessId: string, documentId: string) {
     queryKey: keys.one(businessId, documentId),
     queryFn: () => api<DocumentDetails>(`${base(businessId)}/${documentId}`),
     refetchInterval: query => (query.state.data && isPending(query.state.data.status) ? POLL_MS : false),
+  })
+}
+
+export function useReviewDocument(businessId: string, documentId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: ReviewInput) =>
+      api<DocumentDetails>(`${base(businessId)}/${documentId}/review`, { method: 'PUT', body: JSON.stringify(input) }),
+    onSuccess: saved => {
+      queryClient.setQueryData(keys.one(businessId, documentId), saved)
+      return queryClient.invalidateQueries({ queryKey: keys.all(businessId) })
+    },
   })
 }
 

@@ -14,7 +14,13 @@ import java.util.UUID;
  */
 public record DocumentDetails(UUID id, String filename, String mediaType, long sizeBytes, DocumentStatus status,
                               Instant uploadedAt, int readAttempts, ReadFailure failure, String failureDetail,
-                              ReadingDetails reading) {
+                              ReadingDetails reading, ReviewDetails review) {
+
+    /** The confirmed values, and which fields the person changed from what document AI read. */
+    public record ReviewDetails(Instant reviewedAt, String issuerAfm, LocalDate issueDate, BigDecimal netAmount,
+                                BigDecimal vatAmount, BigDecimal totalAmount, ExpenseCategory category,
+                                List<String> correctedFields) {
+    }
 
     public record Found<T>(T value, double confidence) {
     }
@@ -31,7 +37,8 @@ public record DocumentDetails(UUID id, String filename, String mediaType, long s
     }
 
     static DocumentDetails of(Document document) {
-        Reading r = document.getStatus() == DocumentStatus.READ ? document.getReading() : null;
+        // Kept after a review too, so the screen can show what was suggested next to what was confirmed
+        Reading r = document.getReading();
         ReadingDetails reading = r == null ? null : new ReadingDetails(
             r.getReadAt(),
             found(r.getIssuerAfm(), r.getIssuerAfmConfidence()),
@@ -46,7 +53,16 @@ public record DocumentDetails(UUID id, String filename, String mediaType, long s
             r.getText());
         return new DocumentDetails(document.getId(), document.getFilename(), document.getMediaType(), document.getSizeBytes(),
             document.getStatus(), document.getCreatedAt(), document.getReadAttempts(), document.getReadFailure(),
-            document.getReadFailureDetail(), reading);
+            document.getReadFailureDetail(), reading, review(document));
+    }
+
+    private static ReviewDetails review(Document document) {
+        Review r = document.getReview();
+        if (document.getStatus() != DocumentStatus.REVIEWED || r == null) {
+            return null;
+        }
+        return new ReviewDetails(r.getReviewedAt(), r.getIssuerAfm(), r.getIssueDate(), r.getNetAmount(), r.getVatAmount(),
+            r.getTotalAmount(), r.getCategory(), document.getCorrections().stream().map(Correction::field).toList());
     }
 
     private static <T> Found<T> found(T value, Double confidence) {

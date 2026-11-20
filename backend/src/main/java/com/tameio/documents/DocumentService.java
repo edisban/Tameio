@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.security.MessageDigest;
+import java.time.Instant;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.UUID;
@@ -92,6 +93,21 @@ class DocumentService {
         events.publishEvent(new DocumentReadRequested(document.getId(), businessId));
         log.info("Document {} queued for reading again by user {}", documentId, user.id());
         return DocumentView.of(document);
+    }
+
+    /** Confirms a document's values; they replace what document AI read wherever the document is used. */
+    @Transactional
+    public DocumentDetails review(CurrentUser user, UUID businessId, UUID documentId, ReviewRequest request) {
+        businesses.checkAccess(user, businessId);
+        Document document = find(businessId, documentId);
+        if (!document.canBeReviewed()) {
+            throw new ConflictException("The document is still being read.");
+        }
+        document.review(request, user.id(), Instant.now());
+        events.publishEvent(new DocumentReviewed(document.getId(), businessId, request.issuerAfm(), request.issueDate(),
+            request.netAmount(), request.vatAmount(), request.totalAmount(), request.category()));
+        log.info("Document {} reviewed by user {} with {} corrections", documentId, user.id(), document.getCorrections().size());
+        return DocumentDetails.of(document);
     }
 
     public DocumentContent content(CurrentUser user, UUID businessId, UUID documentId) {

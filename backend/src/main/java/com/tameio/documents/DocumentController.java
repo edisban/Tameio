@@ -3,6 +3,7 @@ package com.tameio.documents;
 import com.tameio.platform.security.CurrentUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.data.domain.Page;
@@ -19,6 +20,8 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
@@ -59,6 +62,13 @@ class DocumentController {
     @GetMapping("/{documentId}")
     DocumentDetails details(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID businessId, @PathVariable UUID documentId) {
         return service.details(CurrentUser.from(jwt), businessId, documentId);
+    }
+
+    @Operation(summary = "Confirm or correct the document's values; every correction is kept as training data")
+    @PutMapping("/{documentId}/review")
+    DocumentDetails review(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID businessId, @PathVariable UUID documentId,
+                           @Valid @RequestBody ReviewRequest request) {
+        return service.review(CurrentUser.from(jwt), businessId, documentId, request);
     }
 
     @Operation(summary = "Send a document that could not be read to document AI again")
