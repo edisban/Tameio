@@ -29,6 +29,38 @@ spring:
     # Errors as RFC 9457 problem details
     problemdetails:
       enabled: true
+  rabbitmq:
+    host: ${TAMEIO_RABBITMQ_HOST:localhost}
+    port: ${TAMEIO_RABBITMQ_PORT:5672}
+    username: ${TAMEIO_RABBITMQ_USERNAME:tameio}
+    password: ${TAMEIO_RABBITMQ_PASSWORD:tameio}
+    # The outbox marks an event as sent only once RabbitMQ has confirmed it
+    publisher-confirm-type: correlated
+    listener:
+      simple:
+        # At most this many documents are read at once per instance, however many are uploaded:
+        # document AI is CPU-bound, so more would only queue up inside it
+        concurrency: 2
+        max-concurrency: 4
+        prefetch: 1
+        retry:
+          # Document AI unavailable: try again after 5 s, then 15 s, then give up (dead-letter queue).
+          # Two retries, so three attempts in all
+          enabled: true
+          max-retries: 2
+          initial-interval: 5s
+          multiplier: 3
+          max-interval: 1m
+  modulith:
+    events:
+      # Sent events are deleted from the outbox; only those still waiting stay in the table
+      completion-mode: delete
+      # Events not yet sent when the app stopped are sent when it starts again
+      republish-outstanding-events-on-restart: true
+      jdbc:
+        # Flyway owns the schema (V4__document_reading.sql)
+        schema-initialization:
+          enabled: false
   threads:
     # Java 21 virtual threads: blocking I/O no longer ties up a platform thread per request
     virtual:
@@ -47,6 +79,10 @@ tameio:
     access-key: ${TAMEIO_S3_ACCESS_KEY:tameio}
     secret-key: ${TAMEIO_S3_SECRET_KEY:tameio-dev-secret}
     create-bucket: true
+  document-ai:
+    url: ${TAMEIO_DOCUMENT_AI_URL:http://localhost:8090}
+    connect-timeout: 2s
+    read-timeout: 90s
 
 server:
   shutdown: graceful

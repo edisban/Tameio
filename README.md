@@ -9,15 +9,16 @@ A platform for Greek small businesses. It keeps their books, sends their invoice
 1. **Create an account and sign in.** Passwords are stored as Argon2id hashes. The session is a signed token in an HttpOnly cookie, with CSRF protection; five wrong passwords lock the account for 15 minutes.
 2. **Register your business** with its ΑΦΜ, checked against the official check digit. You only ever see your own businesses.
 3. **Upload receipts and invoices** (PDF, JPEG or PNG, up to 10 MB), see them in a list and open them. The file type is read from the content, not the name, and the same file cannot be uploaded twice.
-4. **Document AI** (separate service, not yet connected to the app) reads a receipt with OCR and pulls out the ΑΦΜ, date, amounts and VAT, and suggests an expense category.
+4. **Every upload is read by document AI**: OCR, the ΑΦΜ, date, amounts and VAT, checks on them (valid ΑΦΜ, net plus VAT equals the total) and a suggested expense category. The list shows each document's status and what was found; a document that could not be read can be sent again.
 
-Coming next: the app sends each upload to document AI and shows what it found; then accounting, myDATA and loan applications.
+Coming next: a review screen to accept or correct what was read, then accounting, myDATA and loan applications.
 
 ## Stack
 
 | Layer | Choice |
 | --- | --- |
-| Backend | Java 21, Spring Boot 4, Spring Modulith, Spring Security (JWT sessions in HttpOnly cookies, CSRF), Spring Data JPA |
+| Backend | Java 21, Spring Boot 4, Spring Modulith (event publication registry as outbox), Spring Security (JWT sessions in HttpOnly cookies, CSRF), Spring Data JPA, Spring AMQP |
+| Messaging | RabbitMQ 4: quorum work queue for document reading, retries with back-off, dead-letter queue ([ADR 0008](docs/adr/0008-rabbitmq-work-queue-for-document-reading.md)) |
 | Database | PostgreSQL 17, schema owned by Flyway (`ddl-auto: validate`) |
 | File storage | SeaweedFS in a container. The code talks to it with the standard S3 protocol, so production can use any S3-compatible service without code changes |
 | Frontend | React 19, TypeScript, Vite, MUI, TanStack Query, React Hook Form + Zod |
@@ -35,19 +36,24 @@ flowchart LR
         documents[documents]
         platform[platform<br/>security · errors · persistence · storage]
     end
-    db[(PostgreSQL<br/>Flyway)]
+    db[(PostgreSQL<br/>Flyway · outbox)]
     s3[(File storage<br/>SeaweedFS)]
+    mq{{RabbitMQ<br/>tameio.documents.read<br/>+ dead-letter queue}}
+    ai[Document AI<br/>FastAPI · Tesseract · scikit-learn]
 
     browser -- REST, session cookie --> api
     api --> db
     api --> s3
     documents -- checks membership --> identity
+    documents -- DocumentUploaded, after commit --> mq
+    mq -- reading job --> documents
+    documents -- POST /v1/read --> ai
 ```
 
 - **Modular monolith.** One deployable, split into business modules (`identity` and `documents` today, then `accounting`, `mydata`, `lending`, …). Spring Modulith tests that a module only uses another module's public API, so a module can later be moved into its own service if it ever needs to be ([ADR 0001](docs/adr/0001-modular-monolith-first.md)).
 - **Inside a module:** controller → service → repository. Classes are package-private unless another module needs them. The API never returns JPA entities, only records such as `BusinessView`.
 - **`platform`** holds what every module shares: JWT validation and role mapping, RFC 9457 errors, the audited base entity, ΑΦΜ validation, and a `FileStore` interface over S3.
-- **Events.** `documents` publishes `DocumentUploaded`; document AI will start from that event instead of being called directly.
+- **Events and the outbox.** `documents` publishes `DocumentUploaded` inside the upload's transaction. Spring Modulith stores it in `event_publication` and sends it to RabbitMQ only after commit, so no job is lost and none is sent for a rolled-back upload. `DocumentReader` takes jobs from the queue (at most 4 at once per instance), calls document AI outside any transaction, retries after 5 s and 15 s if it does not answer, and then marks the document failed and dead-letters the job ([ADR 0008](docs/adr/0008-rabbitmq-work-queue-for-document-reading.md)).
 - **Lombok** is limited to constructors, getters and loggers. `@Data`, setters and generated `equals`/`hashCode` are turned off in `lombok.config`, because they cause bugs in JPA entities.
 
 ## Run it locally
@@ -61,7 +67,8 @@ docker compose --profile app up -d --build
 ```
 
 Open http://localhost:5180 and create an account with **Εγγραφή**. Everything runs in containers:
-the React app (nginx), the Spring Boot API, document AI (Python), PostgreSQL and file storage (SeaweedFS).
+the React app (nginx), the Spring Boot API, document AI (Python), PostgreSQL, RabbitMQ and file storage (SeaweedFS).
+The RabbitMQ management UI is at http://localhost:15672 (tameio / tameio).
 There are no ready-made accounts or sample data.
 
 ### Work on the code
@@ -69,7 +76,7 @@ There are no ready-made accounts or sample data.
 Requirements: Docker, JDK 21 or newer, Node 22.
 
 ```bash
-# 1. Infrastructure only: Postgres (5433), file storage (8333), document AI (8090)
+# 1. Infrastructure only: Postgres (5433), file storage (8333), RabbitMQ (5672, UI on 15672), document AI (8090)
 docker compose up -d
 
 # 2. Backend on http://localhost:8080, restarts quickly as you change it
@@ -92,7 +99,7 @@ Then open http://localhost:5180. Useful links while it runs:
 
 | Level | What it checks | Run it |
 | --- | --- | --- |
-| Backend unit and API | Domain rules, security, the module structure, every endpoint against real Postgres and S3 storage in containers. JaCoCo fails the build below 80% line coverage. | `cd backend && ./mvnw verify` (needs Docker) |
+| Backend unit and API | Domain rules, security, the module structure, every endpoint and the reading pipeline (outbox, queue, retries, dead letters) against real Postgres, RabbitMQ and S3 storage in containers. JaCoCo fails the build below 80% line coverage. | `cd backend && ./mvnw verify` (needs Docker) |
 | Frontend components | Forms, pages and error messages in a simulated browser, with the API faked by MSW | `cd frontend && npm test` (`npm run test:coverage` for coverage) |
 | Document AI | Field extraction rules, real OCR, and a quality gate: the build fails if the classifier's macro F1 on unseen shops drops | `cd ml/document-ai && pytest` |
 | End to end | The real app in Chromium: sign-up, the API, Postgres and storage. Each test creates its own account. | start the stack and the backend, then `cd frontend && npm run e2e` |
@@ -115,6 +122,11 @@ The backend reads its settings from environment variables prefixed `TAMEIO_`. Th
 | `TAMEIO_S3_BUCKET` | `tameio-documents` |
 | `TAMEIO_S3_ACCESS_KEY` | `tameio` |
 | `TAMEIO_S3_SECRET_KEY` | `tameio-dev-secret` |
+| `TAMEIO_RABBITMQ_HOST` | `localhost` |
+| `TAMEIO_RABBITMQ_PORT` | `5672` |
+| `TAMEIO_RABBITMQ_USERNAME` | `tameio` |
+| `TAMEIO_RABBITMQ_PASSWORD` | `tameio` |
+| `TAMEIO_DOCUMENT_AI_URL` | `http://localhost:8090` |
 
 ## Project layout
 

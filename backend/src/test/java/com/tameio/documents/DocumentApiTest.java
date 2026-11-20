@@ -34,7 +34,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 @SpringBootTest
 @AutoConfigureMockMvc
 @RecordApplicationEvents
-@Import(TestcontainersConfiguration.class)
+@Import({TestcontainersConfiguration.class, ScriptedDocumentAi.class})
 class DocumentApiTest {
 
     @Autowired

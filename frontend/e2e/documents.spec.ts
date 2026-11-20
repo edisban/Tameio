@@ -37,3 +37,12 @@ test('opens an uploaded document in a new tab', async ({ page, context }) => {
   await tab.waitForURL(/^blob:/)
   await expect(tab.locator('img')).toBeVisible()
 })
+
+test('document AI reads an uploaded receipt and the list shows what it found', async ({ page }) => {
+  await page.getByLabel('Επιλογή αρχείων').setInputFiles(fixture('receipt.pdf'))
+  const row = page.getByRole('row').filter({ has: page.getByRole('button', { name: 'receipt.pdf' }) })
+
+  // Through the outbox, RabbitMQ and real OCR; the list polls until the answer is in
+  await expect(row.getByText('Διαβάστηκε')).toBeVisible({ timeout: 60_000 })
+  await expect(row.getByText(/€/)).toBeVisible()
+})

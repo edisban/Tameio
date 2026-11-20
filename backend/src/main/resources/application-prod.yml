@@ -4,6 +4,10 @@ spring:
     url: ${TAMEIO_DB_URL}
     username: ${TAMEIO_DB_USERNAME}
     password: ${TAMEIO_DB_PASSWORD}
+  rabbitmq:
+    host: ${TAMEIO_RABBITMQ_HOST}
+    username: ${TAMEIO_RABBITMQ_USERNAME}
+    password: ${TAMEIO_RABBITMQ_PASSWORD}
 
 tameio:
   auth:
@@ -17,6 +21,8 @@ tameio:
     secret-key: ${TAMEIO_S3_SECRET_KEY}
     # Provisioned with the infrastructure, not by the app
     create-bucket: false
+  document-ai:
+    url: ${TAMEIO_DOCUMENT_AI_URL}
 
 logging:
   structured:

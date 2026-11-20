@@ -27,7 +27,7 @@ export function uploadErrorMessage(error: unknown): string {
   return 'Δεν ήταν δυνατή η σύνδεση με τον διακομιστή.'
 }
 
-const sizeFormat =new Intl.NumberFormat('el-GR', { maximumFractionDigits: 1 })
+const sizeFormat = new Intl.NumberFormat('el-GR', { maximumFractionDigits: 1 })
 
 export function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
@@ -49,4 +49,17 @@ const typeLabels: Record<string, string> = {
 
 export function typeLabel(mediaType: string): string {
   return typeLabels[mediaType] ?? mediaType
+}
+
+const moneyFormat = new Intl.NumberFormat('el-GR', { style: 'currency', currency: 'EUR' })
+
+export function formatMoney(amount: number): string {
+  return moneyFormat.format(amount)
+}
+
+const dayFormat = new Intl.DateTimeFormat('el-GR', { dateStyle: 'medium', timeZone: 'UTC' })
+
+/** A calendar date such as 2026-11-14, shown without shifting it through a time zone. */
+export function formatDay(isoDate: string): string {
+  return dayFormat.format(new Date(`${isoDate}T00:00:00Z`))
 }

@@ -16,6 +16,8 @@ const receipt: DocumentItem = {
   sizeBytes: 1536,
   status: 'UPLOADED',
   uploadedAt: '2026-11-17T14:18:00Z',
+  summary: null,
+  failure: null,
 }
 
 function page(content: DocumentItem[]): Page<DocumentItem> {
@@ -48,9 +50,65 @@ describe('BusinessDocumentsPage', () => {
 
     const table = await screen.findByRole('table', { name: 'Παραστατικά' })
     const row = within(table).getByRole('button', { name: 'απόδειξη-0042.pdf' }).closest('tr')!
-    expect(within(row).getByText('1,5 KB')).toBeInTheDocument()
-    expect(within(row).getByText('17 Νοε 2026, 4:18 μ.μ.')).toBeInTheDocument()
+    expect(within(row).getByText('PDF · 1,5 KB · 17 Νοε 2026, 4:18 μ.μ.')).toBeInTheDocument()
     expect(within(row).getByText('Σε αναμονή ανάγνωσης')).toBeInTheDocument()
+  })
+
+  it('shows what document AI read: category, issue date and total in Greek format', async () => {
+    const read: DocumentItem = {
+      ...receipt,
+      status: 'READ',
+      summary: { issueDate: '2026-11-14', issuerAfm: '094014201', totalAmount: 1234.5, category: 'FUEL' },
+    }
+    server.use(
+      http.get('*/api/v1/businesses/b1', () => HttpResponse.json(business)),
+      http.get('*/api/v1/businesses/b1/documents', () => HttpResponse.json(page([read]))),
+    )
+    renderPage()
+
+    const row = (await screen.findByRole('button', { name: 'απόδειξη-0042.pdf' })).closest('tr')!
+    expect(within(row).getByText('Καύσιμα')).toBeInTheDocument()
+    expect(within(row).getByText('14 Νοε 2026')).toBeInTheDocument()
+    expect(within(row).getByText('1.234,50 €')).toBeInTheDocument()
+    expect(within(row).getByText('Διαβάστηκε')).toBeInTheDocument()
+  })
+
+  it('keeps asking while a document is being read, until it has the answer', async () => {
+    let calls = 0
+    server.use(
+      http.get('*/api/v1/businesses/b1', () => HttpResponse.json(business)),
+      http.get('*/api/v1/businesses/b1/documents', () => {
+        calls++
+        const status = calls === 1 ? 'READING' : 'READ'
+        const summary = status === 'READ' ? { issueDate: null, issuerAfm: null, totalAmount: 12.4, category: 'RESTAURANT' } : null
+        return HttpResponse.json(page([{ ...receipt, status, summary }]))
+      }),
+    )
+    renderPage()
+
+    expect(await screen.findByText('Διαβάζεται')).toBeInTheDocument()
+    expect(await screen.findByText('Εστίαση', {}, { timeout: 5000 })).toBeInTheDocument()
+    expect(screen.getByText('12,40 €')).toBeInTheDocument()
+  })
+
+  it('sends a document that could not be read for reading again', async () => {
+    let status: DocumentItem['status'] = 'FAILED'
+    server.use(
+      http.get('*/api/v1/businesses/b1', () => HttpResponse.json(business)),
+      http.get('*/api/v1/businesses/b1/documents', () =>
+        HttpResponse.json(page([{ ...receipt, status, failure: status === 'FAILED' ? 'GAVE_UP' : null }])),
+      ),
+      http.post('*/api/v1/businesses/b1/documents/d1/read', () => {
+        status = 'UPLOADED'
+        return HttpResponse.json({ ...receipt, status }, { status: 202 })
+      }),
+    )
+    const { user } = renderPage()
+
+    expect(await screen.findByText('Δεν διαβάστηκε')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Ανάγνωση ξανά: απόδειξη-0042.pdf' }))
+
+    expect(await screen.findByText('Σε αναμονή ανάγνωσης')).toBeInTheDocument()
   })
 
   it('uploads a file and adds it to the list', async () => {
@@ -73,7 +131,7 @@ describe('BusinessDocumentsPage', () => {
 
     expect(await screen.findByText('Ανέβηκε')).toBeInTheDocument()
     const row = (await screen.findByRole('button', { name: 'τιμολόγιο.pdf' })).closest('tr')!
-    expect(within(row).getByText('8 B')).toBeInTheDocument()
+    expect(within(row).getByText(/· 8 B ·/)).toBeInTheDocument()
   })
 
   it('stops a file that is too large without sending it', async () => {

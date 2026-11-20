@@ -3,7 +3,7 @@
 # See the app, everything in containers (then open http://localhost:5180):
 #   docker compose --profile app up -d --build
 #
-# Work on the code: only the infrastructure in containers, the backend and frontend on the host
+# Work on the code: only the infrastructure (Postgres, storage, RabbitMQ, document AI) in containers, the backend and frontend on the host
 # for a fast edit-and-reload loop:
 #   docker compose up -d
 #   cd backend && ./mvnw spring-boot:run
@@ -43,6 +43,24 @@ services:
       timeout: 3s
       retries: 20
 
+  rabbitmq:
+    # Work queues: each upload becomes a reading job, retried with back-off and dead-lettered if it keeps failing.
+    # Management UI on http://localhost:15672 (tameio / tameio)
+    image: rabbitmq:4.1-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: tameio
+      RABBITMQ_DEFAULT_PASS: tameio
+    ports:
+      - "127.0.0.1:5672:5672"
+      - "127.0.0.1:15672:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
   document-ai:
     # OCR, field extraction and expense classification (Python, FastAPI, Tesseract, scikit-learn)
     build: ./ml/document-ai
@@ -58,11 +76,13 @@ services:
       TAMEIO_DB_URL: jdbc:postgresql://postgres:5432/tameio
       TAMEIO_S3_ENDPOINT: http://storage:8333
       TAMEIO_DOCUMENT_AI_URL: http://document-ai:8090
+      TAMEIO_RABBITMQ_HOST: rabbitmq
     ports:
       - "127.0.0.1:8080:8080"
     depends_on:
       postgres: { condition: service_healthy }
       storage: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
       document-ai: { condition: service_healthy }
 
   frontend:
@@ -77,3 +97,4 @@ services:
 volumes:
   postgres-data:
   storage-data:
+  rabbitmq-data:

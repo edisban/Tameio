@@ -75,11 +75,34 @@ class DocumentService {
         return documents.findByBusinessId(businessId, pageable).map(DocumentView::of);
     }
 
+    public DocumentDetails details(CurrentUser user, UUID businessId, UUID documentId) {
+        businesses.checkAccess(user, businessId);
+        return DocumentDetails.of(find(businessId, documentId));
+    }
+
+    /** Queues a document that failed to be read for another try. */
+    @Transactional
+    public DocumentView readAgain(CurrentUser user, UUID businessId, UUID documentId) {
+        businesses.checkAccess(user, businessId);
+        Document document = find(businessId, documentId);
+        if (document.getStatus() != DocumentStatus.FAILED) {
+            throw new ConflictException("Only a document that could not be read can be read again.");
+        }
+        document.readAgain();
+        events.publishEvent(new DocumentReadRequested(document.getId(), businessId));
+        log.info("Document {} queued for reading again by user {}", documentId, user.id());
+        return DocumentView.of(document);
+    }
+
     public DocumentContent content(CurrentUser user, UUID businessId, UUID documentId) {
         businesses.checkAccess(user, businessId);
-        Document document = documents.findByIdAndBusinessId(documentId, businessId)
-            .orElseThrow(() -> new NotFoundException("Document not found."));
+        Document document = find(businessId, documentId);
         return new DocumentContent(DocumentView.of(document), files.open(document.getStorageKey()));
+    }
+
+    private Document find(UUID businessId, UUID documentId) {
+        return documents.findByIdAndBusinessId(documentId, businessId)
+            .orElseThrow(() -> new NotFoundException("Document not found."));
     }
 
     /** Keeps only the name the user gave the file, without any folder path, and never an empty name. */

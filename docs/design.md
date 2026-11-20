@@ -124,7 +124,9 @@ suggestion) go over HTTP with a timeout and a fallback.
 - **Kafka** carries domain events between modules and the ML services. Events are durable and replayable,
   so a model can be re-run over past documents ([ADR 0003](adr/0003-kafka-events-rabbitmq-websockets.md)).
 - **RabbitMQ** relays STOMP WebSocket messages, so live updates reach a user whichever instance they are
-  connected to.
+  connected to. It also carries work queues: each upload becomes a reading job, fed from a transactional
+  outbox and retried with back-off before it is dead-lettered
+  ([ADR 0008](adr/0008-rabbitmq-work-queue-for-document-reading.md)).
 
 ### 5.4 Running at scale
 

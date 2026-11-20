@@ -55,6 +55,19 @@ class DocumentController {
         return service.documentsOf(CurrentUser.from(jwt), businessId, pageable);
     }
 
+    @Operation(summary = "One document with everything document AI read from it")
+    @GetMapping("/{documentId}")
+    DocumentDetails details(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID businessId, @PathVariable UUID documentId) {
+        return service.details(CurrentUser.from(jwt), businessId, documentId);
+    }
+
+    @Operation(summary = "Send a document that could not be read to document AI again")
+    @PostMapping("/{documentId}/read")
+    ResponseEntity<DocumentView> readAgain(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID businessId,
+                                           @PathVariable UUID documentId) {
+        return ResponseEntity.accepted().body(service.readAgain(CurrentUser.from(jwt), businessId, documentId));
+    }
+
     @Operation(summary = "The document's file, streamed from storage")
     @GetMapping("/{documentId}/content")
     ResponseEntity<InputStreamResource> content(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID businessId,

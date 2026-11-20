@@ -1,8 +1,10 @@
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined'
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined'
+import ReplayRoundedIcon from '@mui/icons-material/ReplayRounded'
 import {
   Alert,
   Box,
+  Button,
   Card,
   CardContent,
   Chip,
@@ -16,15 +18,14 @@ import {
   TableHead,
   TablePagination,
   TableRow,
+  Tooltip,
   Typography,
 } from '@mui/material'
 import { useState } from 'react'
-import { openDocument, useDocuments, type DocumentItem, type DocumentStatus } from './api'
-import { formatBytes, formatDateTime, typeLabel } from './files'
-
-const statusLabel: Record<DocumentStatus, string> = {
-  UPLOADED: 'Σε αναμονή ανάγνωσης',
-}
+import { openDocument, useDocuments, useReadAgain, type DocumentItem } from './api'
+import { categoryLabel } from './categories'
+import { formatBytes, formatDateTime, formatDay, formatMoney, typeLabel } from './files'
+import { failureLabel, statusColour, statusLabel } from './status'
 
 const PAGE_SIZE = 20
 
@@ -50,8 +51,29 @@ function FileTypeTile({ mediaType }: { mediaType: string }) {
   )
 }
 
-// The icon beside the name already shows the type, so on phones the column gives its room to the name
-const typeColumn = { display: { xs: 'none', sm: 'table-cell' } }
+// On phones the name, total and status matter most; the other columns give them their room
+const wideOnly = { display: { xs: 'none', md: 'table-cell' } }
+const dash = <Typography component="span" color="text.disabled">—</Typography>
+
+function StatusCell({ businessId, document }: { businessId: string; document: DocumentItem }) {
+  const readAgain = useReadAgain(businessId)
+  const chip = <Chip size="small" label={statusLabel[document.status]} sx={statusColour[document.status]} />
+  if (document.status !== 'FAILED') return chip
+  return (
+    <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+      <Tooltip title={document.failure ? failureLabel[document.failure] : ''}>{chip}</Tooltip>
+      <Button
+        size="small"
+        startIcon={<ReplayRoundedIcon />}
+        disabled={readAgain.isPending}
+        onClick={() => readAgain.mutate(document.id)}
+        aria-label={`Ανάγνωση ξανά: ${document.filename}`}
+      >
+        Ξανά
+      </Button>
+    </Stack>
+  )
+}
 
 export function DocumentsTable({ businessId }: { businessId: string }) {
   const [page, setPage] = useState(0)
@@ -107,9 +129,9 @@ export function DocumentsTable({ businessId }: { businessId: string }) {
             <TableHead>
               <TableRow>
                 <TableCell>Αρχείο</TableCell>
-                <TableCell sx={typeColumn}>Τύπος</TableCell>
-                <TableCell align="right">Μέγεθος</TableCell>
-                <TableCell>Ημερομηνία</TableCell>
+                <TableCell sx={wideOnly}>Κατηγορία</TableCell>
+                <TableCell sx={wideOnly}>Έκδοση</TableCell>
+                <TableCell align="right">Σύνολο</TableCell>
                 <TableCell>Κατάσταση</TableCell>
               </TableRow>
             </TableHead>
@@ -128,18 +150,19 @@ export function DocumentsTable({ businessId }: { businessId: string }) {
                         {document.filename}
                       </Link>
                     </Stack>
+                    <Typography variant="body2" color="text.secondary" sx={{ pl: 6, fontVariantNumeric: 'tabular-nums' }}>
+                      {typeLabel(document.mediaType)} · {formatBytes(document.sizeBytes)} · {formatDateTime(document.uploadedAt)}
+                    </Typography>
                   </TableCell>
-                  <TableCell sx={typeColumn}>{typeLabel(document.mediaType)}</TableCell>
-                  <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-                    {formatBytes(document.sizeBytes)}
+                  <TableCell sx={wideOnly}>{document.summary ? categoryLabel(document.summary.category) : dash}</TableCell>
+                  <TableCell sx={{ ...wideOnly, whiteSpace: 'nowrap' }}>
+                    {document.summary?.issueDate ? formatDay(document.summary.issueDate) : dash}
                   </TableCell>
-                  <TableCell sx={{ whiteSpace: 'nowrap' }}>{formatDateTime(document.uploadedAt)}</TableCell>
+                  <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', fontWeight: 600 }}>
+                    {document.summary?.totalAmount != null ? formatMoney(document.summary.totalAmount) : dash}
+                  </TableCell>
                   <TableCell>
-                    <Chip
-                      size="small"
-                      label={statusLabel[document.status]}
-                      sx={{ bgcolor: 'warning.light', color: 'warning.main' }}
-                    />
+                    <StatusCell businessId={businessId} document={document} />
                   </TableCell>
                 </TableRow>
               ))}
