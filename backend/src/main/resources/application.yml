@@ -79,6 +79,10 @@ tameio:
     access-key: ${TAMEIO_S3_ACCESS_KEY:tameio}
     secret-key: ${TAMEIO_S3_SECRET_KEY:tameio-dev-secret}
     create-bucket: true
+  banking:
+    # Lets a business add demo money to its account on a local stack; production turns it off
+    demo-deposits: ${TAMEIO_DEMO_DEPOSITS:true}
+    max-accounts: 5
   bootstrap:
     # The first administrator, created only while the bank has none; the password must be changed at first sign-in
     admin-email: ${TAMEIO_BOOTSTRAP_ADMIN_EMAIL:}

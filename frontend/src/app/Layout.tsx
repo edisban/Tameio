@@ -3,6 +3,8 @@ import AssignmentOutlinedIcon from '@mui/icons-material/AssignmentOutlined'
 import BadgeOutlinedIcon from '@mui/icons-material/BadgeOutlined'
 import DevicesOtherRoundedIcon from '@mui/icons-material/DevicesOtherRounded'
 import FactCheckOutlinedIcon from '@mui/icons-material/FactCheckOutlined'
+import AccountBalanceWalletOutlinedIcon from '@mui/icons-material/AccountBalanceWalletOutlined'
+import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined'
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded'
 import MenuRoundedIcon from '@mui/icons-material/MenuRounded'
 import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined'
@@ -47,7 +49,11 @@ function navigationFor(me: Me | null | undefined): NavItem[] {
   if (!me || !isStaff(me)) return businessNavigation
   const items: NavItem[] = [
     { label: 'Αιτήσεις δανείων', icon: <AssignmentOutlinedIcon />, to: '/bank' },
+    { label: 'Λογαριασμοί πελατών', icon: <AccountBalanceWalletOutlinedIcon />, to: '/bank/accounts' },
   ]
+  if (hasRole(me, 'MANAGER') || hasRole(me, 'ADMIN')) {
+    items.push({ label: 'Γενικό καθολικό', icon: <MenuBookOutlinedIcon />, to: '/bank/ledger' })
+  }
   if (hasRole(me, 'ADMIN')) {
     items.push({ label: 'Προσωπικό', icon: <BadgeOutlinedIcon />, to: '/bank/staff' })
     items.push({ label: 'Αρχείο ενεργειών', icon: <FactCheckOutlinedIcon /> })

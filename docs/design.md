@@ -42,7 +42,7 @@ Goals:
 Non-goals:
 
 - Being a certified e-invoicing provider, a real bank, or a replacement for an accountant.
-- Core banking (accounts, payments, loan servicing after approval). It is mocked where needed.
+- Real money and real customers. (Core banking was a non-goal until [ADR 0009](adr/0009-core-banking-double-entry-ledger.md): businesses now hold current accounts on a double-entry ledger.)
 - Real personal or banking data. Only synthetic data, public datasets and the founder's own documents.
 
 ## 3. Users and roles

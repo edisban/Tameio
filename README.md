@@ -1,6 +1,6 @@
 # Tameio
 
-A platform for Greek small businesses. It keeps their books, sends their invoices to myDATA (AADE), and lets them apply for a business loan from a bank (here the fictional **Kyma Bank · demo**).
+A bank and finance platform for Greek small businesses. They hold their money in current accounts with real IBANs and pay from them, keep their books, send their invoices to myDATA (AADE), and borrow from the bank, here the fictional **Kyma Bank · demo**.
 
 > Work in progress. The plan is in [docs/design.md](docs/design.md), the decisions behind it in [docs/adr/](docs/adr/).
 
@@ -17,7 +17,9 @@ A platform for Greek small businesses. It keeps their books, sends their invoice
 
 7. **Bank staff and their access.** The bank's staff never sign up: an administrator creates each account with a role (credit analyst, credit manager, administrator) and an approval limit, and hands over a temporary password that must be replaced at first sign-in. Disabling an account, resetting its password, changing its role or "sign out everywhere" ends that person's sessions at once: every request checks the token's session version against the account.
 
-Coming next: loan applications with maker-checker approval, a tamper-evident audit log, and portfolio analytics.
+8. **Current accounts and payments.** A business opens accounts with Greek IBANs of Kyma Bank, receives money (a demo deposit on a local stack) and pays other accounts after reviewing the payment. Every movement is a balanced double-entry journal entry: the database refuses unbalanced or altered entries, transfers lock accounts in a fixed order so they never deadlock or overdraw, and an `Idempotency-Key` makes a retried payment pay once. Bank staff search customer accounts, freeze them, and see the trial balance, which is always zero ([ADR 0009](docs/adr/0009-core-banking-double-entry-ledger.md)).
+
+Coming next: SEPA payments to other banks with Verification of Payee, a financial overview, loans with maker-checker approval, a tamper-evident audit log, and portfolio analytics.
 
 ## Stack
 
@@ -41,6 +43,7 @@ flowchart LR
         identity[identity]
         documents[documents]
         accounting[accounting]
+        banking[banking<br/>double-entry ledger]
         platform[platform<br/>security · errors · persistence · storage]
     end
     db[(PostgreSQL<br/>Flyway · outbox)]
@@ -58,11 +61,12 @@ flowchart LR
     documents -. DocumentReviewed .-> accounting
 ```
 
-- **Modular monolith.** One deployable, split into business modules (`identity`, `documents` and `accounting` today, then `mydata`, `lending`, …). Spring Modulith tests that a module only uses another module's public API, so a module can later be moved into its own service if it ever needs to be ([ADR 0001](docs/adr/0001-modular-monolith-first.md)).
+- **Modular monolith.** One deployable, split into business modules (`identity`, `documents`, `accounting` and `banking` today, then `payments`, `lending`, …). Spring Modulith tests that a module only uses another module's public API, so a module can later be moved into its own service if it ever needs to be ([ADR 0001](docs/adr/0001-modular-monolith-first.md)).
 - **Inside a module:** controller → service → repository. Classes are package-private unless another module needs them. The API never returns JPA entities, only records such as `BusinessView`.
 - **`platform`** holds what every module shares: JWT validation and role mapping, RFC 9457 errors, the audited base entity, ΑΦΜ validation, and a `FileStore` interface over S3.
 - **Events and the outbox.** `documents` publishes `DocumentUploaded` inside the upload's transaction. Spring Modulith stores it in `event_publication` and sends it to RabbitMQ only after commit, so no job is lost and none is sent for a rolled-back upload. `DocumentReader` takes jobs from the queue (at most 4 at once per instance), calls document AI outside any transaction, retries after 5 s and 15 s if it does not answer, and then marks the document failed and dead-letters the job ([ADR 0008](docs/adr/0008-rabbitmq-work-queue-for-document-reading.md)).
 - **Module listeners.** A confirmed document publishes `DocumentReviewed`; `accounting` keeps its expense book with an `@ApplicationModuleListener`, which runs after commit in its own transaction and is retried from the event publication registry if it fails. The two modules share ids, never tables.
+- **The ledger.** Only `Ledger` moves money: it locks the accounts an entry touches in id order, applies each signed leg to its balance and stores the entry with its postings. A deferred constraint trigger refuses any entry whose postings do not add up to zero, and triggers make entries and postings append-only.
 - **Lombok** is limited to constructors, getters and loggers. `@Data`, setters and generated `equals`/`hashCode` are turned off in `lombok.config`, because they cause bugs in JPA entities.
 
 ## Run it locally
@@ -138,6 +142,7 @@ The backend reads its settings from environment variables prefixed `TAMEIO_`. Th
 | `TAMEIO_RABBITMQ_USERNAME` | `tameio` |
 | `TAMEIO_RABBITMQ_PASSWORD` | `tameio` |
 | `TAMEIO_DOCUMENT_AI_URL` | `http://localhost:8090` |
+| `TAMEIO_DEMO_DEPOSITS` | `true` (production: off): businesses can add demo money to their accounts |
 | `TAMEIO_BOOTSTRAP_ADMIN_EMAIL` | none: the first administrator, created only while there is none |
 | `TAMEIO_BOOTSTRAP_ADMIN_PASSWORD` | none: their temporary password |
 
