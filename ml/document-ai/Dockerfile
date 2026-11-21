@@ -15,11 +15,13 @@ WORKDIR /app
 # If a test fails, no image is produced.
 FROM base AS build
 COPY pyproject.toml ./
-RUN mkdir -p src/document_ai training \
-    && touch src/document_ai/__init__.py training/__init__.py \
+RUN mkdir -p src/document_ai training extraction \
+    && touch src/document_ai/__init__.py training/__init__.py extraction/__init__.py \
     && pip install ".[dev]"
 COPY src ./src
 COPY training ./training
+COPY extraction ./extraction
+COPY data ./data
 COPY tests ./tests
 RUN pip install --no-deps --force-reinstall . \
     && python -m pytest -q -p no:cacheprovider \
