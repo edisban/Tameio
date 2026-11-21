@@ -107,11 +107,13 @@ books. Every figure is made up and every movement goes through the real ledger, 
 
 | Sign in as | Password | Sees |
 | --- | --- | --- |
-| demo@tameio.local | demo-password-2026 | Emma Collins: Καφέ Το Στέκι, Αρτοποιία Αιγαίο, Studio Λευκό |
-| lucas@tameio.local | demo-password-2026 | Lucas Meyer: Ταβέρνα Ο Γιάννης (an island taverna, shut in winter) |
-| manager@tameio.local | demo-staff-password-2026 | Daniel Novak, the back office as a credit manager (approves up to 100.000 €) |
-| analyst@tameio.local | demo-staff-password-2026 | Sofia Rossi, the back office as a credit analyst |
-| admin@tameio.local | demo-staff-password-2026 | Olivia Grant, the back office as administrator: everything, including staff and the general ledger |
+| jack@tameio.local | jack123 | Jack Harbour: Jack's Café |
+| lola@tameio.local | lola123 | Lola Crumb: Lola's Bakery |
+| max@tameio.local | max123 | Max Pixel: Pixel Studio, a design studio |
+| jim@tameio.local | jim123 | Jim Merriman: The Grinning Fox Pub, on an island and shut in winter |
+| analyst@tameio.local | analyst123 | Sofia Rossi, the back office as a credit analyst |
+| manager@tameio.local | manager123 | Daniel Novak, the back office as a credit manager (approves up to 100.000 €) |
+| admin@tameio.local | admin123 | Olivia Grant, the back office as administrator: everything, including staff and the general ledger |
 
 You can also create your own account with **Εγγραφή**. To start again from nothing:
 `docker compose --profile app down -v` removes the data volumes. Everything runs in containers:
