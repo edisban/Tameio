@@ -324,6 +324,18 @@ class LendingApiTest {
     }
 
     @Test
+    void onceEveryInstalmentIsDueThereIsNoNextOne() throws Exception {
+        String id = disbursed("5000");
+        jdbc.update("update loan_instalment set due_on = current_date - 1 where loan_application_id = ?::uuid", id);
+
+        instalmentsDue.run();
+
+        MvcTestResult seen = mvc.get().uri("/api/v1/businesses/{b}/loan-applications/{id}", businessId, id).with(owner).exchange();
+        assertThat(seen).bodyJson().extractingPath("$.repayment.instalmentsDue").isEqualTo(24);
+        assertThat(seen).bodyJson().extractingPath("$.repayment.nextDueOn").isNull();
+    }
+
+    @Test
     void runningTheJobAgainTheSameDayChangesNothing() throws Exception {
         String id = disbursed("5000");
         firstInstalmentFellDueYesterday(id);
