@@ -1,6 +1,6 @@
 # 0008. A RabbitMQ work queue for reading documents, fed by an outbox
 
-Status: accepted · 2026-11-20 · refines [0003](0003-kafka-events-rabbitmq-websockets.md)
+Status: accepted · 2026-11-20 · supersedes [0003](0003-kafka-events-rabbitmq-websockets.md)
 
 ## Context
 

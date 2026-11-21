@@ -2,6 +2,9 @@
 
 Status: accepted · 2026-11-16
 
+> Note (2026-11-21): longer work reaches the Python service through a RabbitMQ work queue
+> ([ADR 0008](0008-rabbitmq-work-queue-for-document-reading.md)), not Kafka, which was never introduced.
+
 ## Context
 
 The business side needs what banks and their integrators standardise on: transactions, security,

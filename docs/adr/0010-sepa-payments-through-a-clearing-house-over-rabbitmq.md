@@ -1,6 +1,12 @@
 # 0010. SEPA payments through a clearing house, over RabbitMQ only
 
-Status: accepted · 2026-11-21
+Status: withdrawn · 2026-11-21
+
+> Withdrawn the same day. Payments added the most moving parts to the project (a simulated clearing
+> house, delayed reports, returns, Verification of Payee) for a feature the portfolio does not need yet,
+> and each reliability fix brought another concept. The code, with those fixes, is kept at the git tag
+> `with-payments`; the `payment` table was dropped by Flyway V10, while the money it moved stays in the
+> ledger, which is append-only. The decision below is kept as it was made.
 
 ## Context
 

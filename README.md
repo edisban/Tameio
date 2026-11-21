@@ -1,6 +1,6 @@
 # Tameio
 
-A bank and finance platform for Greek small businesses. They hold their money in current accounts with real IBANs and pay from them, keep their books, send their invoices to myDATA (AADE), and borrow. Tameio is itself the bank: a fictional one, with invented data and no real money.
+A small bank for Greek small businesses, with their books built in. A business holds its money in current accounts with Greek IBANs, uploads receipts that AI reads into an expense book, and (next) borrows with the figures it has already verified. Tameio is itself the bank: a fictional one. Every person, business, movement and document comes from the demo data loader; there is no real money.
 
 > Work in progress. The plan is in [docs/design.md](docs/design.md), the decisions behind it in [docs/adr/](docs/adr/).
 
@@ -10,25 +10,22 @@ A bank and finance platform for Greek small businesses. They hold their money in
 2. **Register your business** with its ΑΦΜ, checked against the official check digit. You only ever see your own businesses.
 3. **Upload receipts and invoices** (PDF, JPEG or PNG, up to 10 MB), see them in a list and open them. The file type is read from the content, not the name, and the same file cannot be uploaded twice.
 4. **Every upload is read by document AI**: OCR, the ΑΦΜ, date, amounts and VAT, checks on them (valid ΑΦΜ, net plus VAT equals the total) and a suggested expense category. The list shows each document's status and what was found; a document that could not be read can be sent again.
-
 5. **Check and confirm each document** on its own page: the file beside what was read, each field marked with how sure document AI was, the checks it ran, and the suggested category. The owner corrects what is wrong and confirms; amounts must add up to the cent. Every correction is stored with the model version as training data, and a document that could not be read can be filled in by hand.
-
 6. **Books and VAT.** Every confirmed document becomes an entry in the expense book. The accounting page shows the year's spending, input VAT and document count, a chart by month (or a table), totals by category, the VAT of each quarter, and the book itself, filterable by category. The accountant gets it as a CSV file that Greek Excel opens as is.
-
 7. **Bank staff and their access.** The bank's staff never sign up: an administrator creates each account with a role (credit analyst, credit manager, administrator) and an approval limit, and hands over a temporary password that must be replaced at first sign-in. Disabling an account, resetting its password, changing its role or "sign out everywhere" ends that person's sessions at once: every request checks the token's session version against the account.
+8. **Current accounts on a double-entry ledger.** A business opens accounts with Greek IBANs of Tameio and sees every movement with the balance after it; on a local stack a demo deposit adds money. Every movement is a balanced journal entry: the database refuses unbalanced or altered entries, and the ledger locks accounts in a fixed order so concurrent entries never deadlock or overdraw. Bank staff search customer accounts, freeze them, and see the trial balance, which is always zero ([ADR 0009](docs/adr/0009-core-banking-double-entry-ledger.md)).
+9. **Demo data.** A local stack starts with four businesses and a year of invented history in their accounts and expense books, plus demo staff (see below).
 
-8. **Current accounts and payments.** A business opens accounts with Greek IBANs of Tameio, receives money (a demo deposit on a local stack) and pays other accounts after reviewing the payment. Every movement is a balanced double-entry journal entry: the database refuses unbalanced or altered entries, transfers lock accounts in a fixed order so they never deadlock or overdraw, and an `Idempotency-Key` makes a retried payment pay once. Bank staff search customer accounts, freeze them, and see the trial balance, which is always zero ([ADR 0009](docs/adr/0009-core-banking-double-entry-ledger.md)).
+Payments between accounts and to other banks were built and then withdrawn to keep the project focused; the code is at the git tag `with-payments` ([ADR 0010](docs/adr/0010-sepa-payments-through-a-clearing-house-over-rabbitmq.md)).
 
-9. **SEPA payments and Verification of Payee.** Payments to other banks go to a simulated SEPA clearing house over RabbitMQ: the money leaves the account at once, then the payment settles or comes back with an ISO 20022 reason code (AC04 closed account, AC01 wrong account), and the page follows it live. Other banks can pay in. Before every payment the payee's name is checked against the account (match, close match with the real name, no match), and a mismatch needs the payer's explicit confirmation ([ADR 0010](docs/adr/0010-sepa-payments-through-a-clearing-house-over-rabbitmq.md)).
-
-Coming next: a financial overview, loans with maker-checker approval, a tamper-evident audit log, and portfolio analytics.
+Coming next: loans with maker-checker approval, an append-only audit log, then observability and several instances behind a load balancer ([docs/design.md](docs/design.md#12-delivery-plan)).
 
 ## Stack
 
 | Layer | Choice |
 | --- | --- |
 | Backend | Java 21, Spring Boot 4, Spring Modulith (event publication registry as outbox), Spring Security (JWT sessions in HttpOnly cookies, CSRF), Spring Data JPA, Spring AMQP |
-| Messaging | RabbitMQ 4: quorum work queue for document reading, retries with back-off, dead-letter queue ([ADR 0008](docs/adr/0008-rabbitmq-work-queue-for-document-reading.md)) |
+| Messaging | RabbitMQ 4: quorum work queue for document reading, retries with back-off, dead-letter queue ([ADR 0008](docs/adr/0008-rabbitmq-work-queue-for-document-reading.md)); no Kafka |
 | Database | PostgreSQL 17, schema owned by Flyway (`ddl-auto: validate`) |
 | File storage | SeaweedFS in a container. The code talks to it with the standard S3 protocol, so production can use any S3-compatible service without code changes |
 | Frontend | React 19, TypeScript, Vite, MUI, TanStack Query, React Hook Form + Zod |
@@ -46,7 +43,6 @@ flowchart LR
         documents[documents]
         accounting[accounting]
         banking[banking<br/>double-entry ledger]
-        clearing[clearing<br/>simulated SEPA clearing house]
         platform[platform<br/>security · errors · persistence · storage]
     end
     db[(PostgreSQL<br/>Flyway · outbox)]
@@ -62,12 +58,9 @@ flowchart LR
     mq -- reading job --> documents
     documents -- POST /v1/read --> ai
     documents -. DocumentReviewed .-> accounting
-    banking -- pacs.008, VoP --> mq
-    mq -- pacs.002 reports, incoming --> banking
-    clearing <-- JSON only, no shared types --> mq
 ```
 
-- **Modular monolith.** One deployable, split into business modules (`identity`, `documents`, `accounting` and `banking` today, then `payments`, `lending`, …). Spring Modulith tests that a module only uses another module's public API, so a module can later be moved into its own service if it ever needs to be ([ADR 0001](docs/adr/0001-modular-monolith-first.md)).
+- **Modular monolith.** One deployable, split into business modules (`identity`, `documents`, `accounting` and `banking` today, then `lending` and `audit`). Spring Modulith tests that a module only uses another module's public API, so a module can later be moved into its own service if it ever needs to be ([ADR 0001](docs/adr/0001-modular-monolith-first.md)).
 - **Inside a module:** controller → service → repository. Classes are package-private unless another module needs them. The API never returns JPA entities, only records such as `BusinessView`.
 - **`platform`** holds what every module shares: JWT validation and role mapping, RFC 9457 errors, the audited base entity, ΑΦΜ validation, and a `FileStore` interface over S3.
 - **Events and the outbox.** `documents` publishes `DocumentUploaded` inside the upload's transaction. Spring Modulith stores it in `event_publication` and sends it to RabbitMQ only after commit, so no job is lost and none is sent for a rolled-back upload. `DocumentReader` takes jobs from the queue (at most 4 at once per instance), calls document AI outside any transaction, retries after 5 s and 15 s if it does not answer, and then marks the document failed and dead-letters the job ([ADR 0008](docs/adr/0008-rabbitmq-work-queue-for-document-reading.md)).
