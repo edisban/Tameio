@@ -1,6 +1,5 @@
 import AccountBalanceWalletOutlinedIcon from '@mui/icons-material/AccountBalanceWalletOutlined'
 import AddRoundedIcon from '@mui/icons-material/AddRounded'
-import SendRoundedIcon from '@mui/icons-material/SendRounded'
 import {
   Alert,
   Box,
@@ -24,11 +23,9 @@ import { BusinessHeader } from '../businesses/BusinessHeader'
 import { parseCents } from '../documents/amounts'
 import { AccountCard } from './AccountCard'
 import { useAccounts, useDemoDeposit, useOpenAccount, useStatement, type BankAccount } from './api'
-import { PaymentsList } from './PaymentsList'
 import { TransactionsList } from './TransactionsList'
-import { TransferDialog } from './TransferDialog'
 
-/** For a local stack: money from a pretend customer, so payments can be tried. */
+/** For a local stack: money from a pretend customer, so the account has something to show. */
 function DemoDepositDialog({ businessId, account, open, onClose }: { businessId: string; account: BankAccount; open: boolean; onClose: () => void }) {
   const deposit = useDemoDeposit(businessId, account.id)
   const [amount, setAmount] = useState('1.000,00')
@@ -82,7 +79,7 @@ export function AccountsPage() {
   const accounts = useAccounts(businessId)
   const openAccount = useOpenAccount(businessId)
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [dialog, setDialog] = useState<'transfer' | 'deposit' | null>(null)
+  const [depositing, setDepositing] = useState(false)
 
   const list = accounts.data ?? []
   const selected = list.find(a => a.id === selectedId) ?? list[0]
@@ -125,16 +122,7 @@ export function AccountsPage() {
               </Box>
 
               <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
-                <Button
-                  variant="contained"
-                  size="large"
-                  startIcon={<SendRoundedIcon />}
-                  onClick={() => setDialog('transfer')}
-                  disabled={selected.status !== 'ACTIVE'}
-                >
-                  Νέα μεταφορά
-                </Button>
-                <Button variant="outlined" size="large" onClick={() => setDialog('deposit')} disabled={selected.status !== 'ACTIVE'}>
+                <Button variant="contained" size="large" onClick={() => setDepositing(true)} disabled={selected.status !== 'ACTIVE'}>
                   Κατάθεση demo
                 </Button>
                 <Button size="large" startIcon={<AddRoundedIcon />} onClick={open} disabled={openAccount.isPending || list.length >= 5}>
@@ -145,8 +133,6 @@ export function AccountsPage() {
                 <Alert severity="warning">Ο λογαριασμός έχει παγώσει από την τράπεζα. Επικοινωνήστε με το κατάστημα.</Alert>
               )}
 
-              <PaymentsList key={`payments-${selected.id}`} businessId={businessId} accountId={selected.id} />
-
               <Stack spacing={1.5}>
                 <Typography variant="h6" component="h2">
                   Κινήσεις · {selected.name}
@@ -154,8 +140,7 @@ export function AccountsPage() {
                 <Statement key={selected.id} businessId={businessId} account={selected} />
               </Stack>
 
-              <TransferDialog businessId={businessId} account={selected} open={dialog === 'transfer'} onClose={() => setDialog(null)} />
-              <DemoDepositDialog businessId={businessId} account={selected} open={dialog === 'deposit'} onClose={() => setDialog(null)} />
+              <DemoDepositDialog businessId={businessId} account={selected} open={depositing} onClose={() => setDepositing(false)} />
             </>
           )}
         </>
