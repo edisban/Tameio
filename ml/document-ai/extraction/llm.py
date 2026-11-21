@@ -35,7 +35,6 @@ class LlmReader:
             model = model.merge_and_unload()
         self.model = model.eval()
         self._shown = shown
-        self.name = "finetuned" if adapter else "prompted"
         self.model_name = f"{model_id} + LoRA" if adapter else model_id
 
     @property

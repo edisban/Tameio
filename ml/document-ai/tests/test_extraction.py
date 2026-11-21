@@ -17,7 +17,6 @@ RECEIPT = Example(id="test-0000", shop="ΚΤΕΛ", text="ΣΥΝΟΛΟ 166,18", e
 
 
 class FakeReader:
-    name = "fake"
     model_name = "fake model"
     hardware = "CPU"
 

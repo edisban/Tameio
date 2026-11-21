@@ -37,7 +37,6 @@ PERCENTILE_95 = 18  # statistics.quantiles(n=20) returns 19 cut points; index 18
 
 
 class Reader(Protocol):
-    name: str
     model_name: str
     hardware: str
 
