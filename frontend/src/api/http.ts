@@ -25,17 +25,23 @@ function readCookie(name: string): string | undefined {
  * cookie the browser adds by itself; for changes, the CSRF token from its own cookie goes in a header,
  * which proves the request comes from this page and not from another site.
  */
-async function request(path: string, init: RequestInit, accept: string): Promise<Response> {
+async function request(path: string, init: RequestInit, accept: string, isRetry = false): Promise<Response> {
   const headers = new Headers(init.headers)
   headers.set('Accept', accept)
   // JSON bodies are sent as strings; FormData sets its own multipart Content-Type with the boundary
   if (typeof init.body === 'string') headers.set('Content-Type', 'application/json')
   const method = (init.method ?? 'GET').toUpperCase()
+  const isChange = !SAFE_METHODS.has(method)
   const csrf = readCookie(CSRF_COOKIE)
-  if (!SAFE_METHODS.has(method) && csrf) headers.set(CSRF_HEADER, decodeURIComponent(csrf))
+  if (isChange && csrf) headers.set(CSRF_HEADER, decodeURIComponent(csrf))
 
   // Resolved against the page's own origin, which is what the browser does anyway and what Node's fetch needs in tests
   const response = await fetch(new URL(path, window.location.origin), { ...init, headers, credentials: 'same-origin' })
+  // A change sent before the page had its CSRF cookie (signing in while the first answer is still on its way)
+  // is refused, and the refusal brings the cookie: send it once more, now with the token
+  if (isChange && !csrf && !isRetry && (response.status === 401 || response.status === 403) && readCookie(CSRF_COOKIE)) {
+    return request(path, init, accept, true)
+  }
   if (!response.ok) {
     const isProblem = response.headers.get('Content-Type')?.includes('json')
     const problem: Problem = isProblem ? await response.json() : { status: response.status }
