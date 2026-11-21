@@ -6,6 +6,7 @@ import com.tameio.platform.validation.Iban;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -31,6 +32,7 @@ class DemoBanking {
     private final Ledger ledger;
 
     @EventListener
+    @Order(DemoBusinessReady.ACCOUNTS)
     void on(DemoBusinessReady demo) {
         String iban = Iban.of("GR", BankingService.BANK_CODE + BankingService.BRANCH + "%016d".formatted(accounts.nextAccountNumber()));
         BankAccount account = accounts.save(BankAccount.openCurrent(demo.businessId(), demo.name(), iban, "Λογαριασμός όψεως"));

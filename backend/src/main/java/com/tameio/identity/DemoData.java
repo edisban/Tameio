@@ -75,29 +75,30 @@ class DemoData implements ApplicationRunner {
 
         UserAccount emma = accounts.save(UserAccount.create(OWNER_EMAIL, businessHash, "Emma Collins", UserRole.BUSINESS));
         UserAccount lucas = accounts.save(UserAccount.create(SECOND_OWNER_EMAIL, businessHash, "Lucas Meyer", UserRole.BUSINESS));
-        staff("analyst@tameio.local", "Sofia Rossi", UserRole.ANALYST, null, staffHash);
-        staff("manager@tameio.local", "Daniel Novak", UserRole.MANAGER, new BigDecimal("100000.00"), staffHash);
-        // The administrator sees and manages everything in the back office, and may approve any loan
-        staff("admin@tameio.local", "Olivia Grant", UserRole.ADMIN, new BigDecimal("1000000.00"), staffHash);
+        var bankers = new DemoBusinessReady.Bankers(
+            staff("analyst@tameio.local", "Sofia Rossi", UserRole.ANALYST, null, staffHash),
+            staff("manager@tameio.local", "Daniel Novak", UserRole.MANAGER, new BigDecimal("100000.00"), staffHash),
+            // The administrator sees and manages everything in the back office, and may approve any loan
+            staff("admin@tameio.local", "Olivia Grant", UserRole.ADMIN, new BigDecimal("1000000.00"), staffHash));
 
         create(emma, List.of(
             new DemoBusiness("Καφέ Το Στέκι", DemoYear.Profile.CAFE, 11),
             new DemoBusiness("Αρτοποιία Αιγαίο", DemoYear.Profile.BAKERY, 23),
-            new DemoBusiness("Studio Λευκό", DemoYear.Profile.STUDIO, 37)), end);
-        create(lucas, List.of(new DemoBusiness("Ταβέρνα Ο Γιάννης", DemoYear.Profile.TAVERNA, 41)), end);
+            new DemoBusiness("Studio Λευκό", DemoYear.Profile.STUDIO, 37)), end, bankers);
+        create(lucas, List.of(new DemoBusiness("Ταβέρνα Ο Γιάννης", DemoYear.Profile.TAVERNA, 41)), end, bankers);
     }
 
-    private void staff(String email, String name, UserRole role, BigDecimal limit, String hash) {
-        if (accounts.existsByEmail(email)) {
-            return;
-        }
-        UserAccount account = UserAccount.staff(email, hash, name, role, limit);
-        // A demo account is ready to use: its password is printed in the README, not handed over
-        account.changePassword(hash);
-        accounts.save(account);
+    private DemoBusinessReady.Banker staff(String email, String name, UserRole role, BigDecimal limit, String hash) {
+        UserAccount account = accounts.findByEmail(email).orElseGet(() -> {
+            UserAccount created = UserAccount.staff(email, hash, name, role, limit);
+            // A demo account is ready to use: its password is printed in the README, not handed over
+            created.changePassword(hash);
+            return accounts.save(created);
+        });
+        return new DemoBusinessReady.Banker(account.getId().toString(), account.getFullName());
     }
 
-    private void create(UserAccount owner, List<DemoBusiness> list, LocalDate end) {
+    private void create(UserAccount owner, List<DemoBusiness> list, LocalDate end, DemoBusinessReady.Bankers bankers) {
         for (DemoBusiness demo : list) {
             String afm = DemoYear.afm("demo business " + demo.name());
             if (businesses.existsByAfm(afm)) {
@@ -105,7 +106,7 @@ class DemoData implements ApplicationRunner {
             }
             Business business = businesses.save(Business.register(afm, demo.name()));
             memberships.save(Membership.of(business, owner.getId().toString(), MembershipRole.OWNER));
-            events.publishEvent(new DemoBusinessReady(business.getId(), demo.name(), demo.profile(), end, demo.seed()));
+            events.publishEvent(new DemoBusinessReady(business.getId(), demo.name(), demo.profile(), end, demo.seed(), bankers));
             log.info("Demo business {} ({}) ready", demo.name(), demo.profile());
         }
     }
