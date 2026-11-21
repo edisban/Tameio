@@ -34,7 +34,7 @@ import { ApiError } from '../../api/http'
 import { PageHeader } from '../../app/PageHeader'
 import { useSession } from '../../auth/session'
 import { parseCents } from '../documents/amounts'
-import { formatMoney } from '../documents/files'
+import { formatMoney } from '../../format'
 import {
   roleLabels,
   useCreateStaff,

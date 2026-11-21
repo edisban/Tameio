@@ -1,10 +1,8 @@
 import { Alert, Box, Button, Card, CardContent, Chip, Stack, Step, StepLabel, Stepper, Typography } from '@mui/material'
-import { formatDateTime, formatMoney } from '../documents/files'
+import { formatDateTime, formatLongDay, formatMoney, formatRate } from '../../format'
 import type { Application, Repayment } from './api'
 import { journey, purposeLabel, statusColour, statusLabel } from './labels'
 
-const percent = new Intl.NumberFormat('el-GR', { style: 'percent', maximumFractionDigits: 2 })
-const day = new Intl.DateTimeFormat('el-GR', { dateStyle: 'long' })
 
 /** The next instalment, and a warning when some are due. */
 function RepaymentLine({ repayment }: { repayment: Repayment }) {
@@ -17,7 +15,7 @@ function RepaymentLine({ repayment }: { repayment: Repayment }) {
       )}
       {repayment.nextDueOn && repayment.nextAmount !== null && (
         <Typography variant="body2">
-          Επόμενη δόση {formatMoney(repayment.nextAmount)} στις {day.format(new Date(repayment.nextDueOn))}.
+          Επόμενη δόση {formatMoney(repayment.nextAmount)} στις {formatLongDay(repayment.nextDueOn)}.
         </Typography>
       )}
     </Stack>
@@ -63,7 +61,7 @@ export function ApplicationCard({ application, onSubmit, submitting }: {
             <Chip label={statusLabel[application.status]} sx={statusColour[application.status]} />
           </Stack>
           <Typography variant="body2" sx={{ fontVariantNumeric: 'tabular-nums' }}>
-            Μηνιαία δόση <b>{formatMoney(application.monthlyInstalment)}</b> με επιτόκιο {percent.format(application.annualRate)}
+            Μηνιαία δόση <b>{formatMoney(application.monthlyInstalment)}</b> με επιτόκιο {formatRate(application.annualRate)}
           </Typography>
           <Progress application={application} />
           {application.decisionNote && (

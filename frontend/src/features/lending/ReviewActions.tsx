@@ -2,7 +2,7 @@ import { Alert, Button, Card, CardContent, Stack, TextField, ToggleButton, Toggl
 import { useState } from 'react'
 import { ApiError } from '../../api/http'
 import { hasRole, useSession } from '../../auth/session'
-import { formatMoney } from '../documents/files'
+import { formatMoney } from '../../format'
 import { useDecide, useDisburse, useRecommend, useStartReview, type Case, type Outcome } from './api'
 
 const failure = (error: unknown) =>

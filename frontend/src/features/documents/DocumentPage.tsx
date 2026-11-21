@@ -19,7 +19,7 @@ import { Link as RouterLink, useParams } from 'react-router'
 import { useBusiness } from '../businesses/api'
 import { isPending, openDocument, useDocument, useReadAgain } from './api'
 import { DocumentPreview } from './DocumentPreview'
-import { formatDateTime } from './files'
+import { formatDateTime } from '../../format'
 import { ReviewForm } from './ReviewForm'
 import { failureLabel, statusColour, statusLabel } from './status'
 

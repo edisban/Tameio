@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { Link as RouterLink } from 'react-router'
 import { PageHeader } from '../../app/PageHeader'
 import { useSession } from '../../auth/session'
-import { formatDateTime, formatMoney } from '../documents/files'
+import { formatDateTime, formatMoney } from '../../format'
 import { useQueue, type LoanStatus } from './api'
 import { bandColour, bandLabel, purposeLabel, statusColour, statusLabel } from './labels'
 
