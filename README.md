@@ -1,6 +1,6 @@
 # Tameio
 
-A bank and finance platform for Greek small businesses. They hold their money in current accounts with real IBANs and pay from them, keep their books, send their invoices to myDATA (AADE), and borrow from the bank, here the fictional **Kyma Bank · demo**.
+A bank and finance platform for Greek small businesses. They hold their money in current accounts with real IBANs and pay from them, keep their books, send their invoices to myDATA (AADE), and borrow. Tameio is itself the bank: a fictional one, with invented data and no real money.
 
 > Work in progress. The plan is in [docs/design.md](docs/design.md), the decisions behind it in [docs/adr/](docs/adr/).
 
@@ -17,7 +17,7 @@ A bank and finance platform for Greek small businesses. They hold their money in
 
 7. **Bank staff and their access.** The bank's staff never sign up: an administrator creates each account with a role (credit analyst, credit manager, administrator) and an approval limit, and hands over a temporary password that must be replaced at first sign-in. Disabling an account, resetting its password, changing its role or "sign out everywhere" ends that person's sessions at once: every request checks the token's session version against the account.
 
-8. **Current accounts and payments.** A business opens accounts with Greek IBANs of Kyma Bank, receives money (a demo deposit on a local stack) and pays other accounts after reviewing the payment. Every movement is a balanced double-entry journal entry: the database refuses unbalanced or altered entries, transfers lock accounts in a fixed order so they never deadlock or overdraw, and an `Idempotency-Key` makes a retried payment pay once. Bank staff search customer accounts, freeze them, and see the trial balance, which is always zero ([ADR 0009](docs/adr/0009-core-banking-double-entry-ledger.md)).
+8. **Current accounts and payments.** A business opens accounts with Greek IBANs of Tameio, receives money (a demo deposit on a local stack) and pays other accounts after reviewing the payment. Every movement is a balanced double-entry journal entry: the database refuses unbalanced or altered entries, transfers lock accounts in a fixed order so they never deadlock or overdraw, and an `Idempotency-Key` makes a retried payment pay once. Bank staff search customer accounts, freeze them, and see the trial balance, which is always zero ([ADR 0009](docs/adr/0009-core-banking-double-entry-ledger.md)).
 
 9. **SEPA payments and Verification of Payee.** Payments to other banks go to a simulated SEPA clearing house over RabbitMQ: the money leaves the account at once, then the payment settles or comes back with an ISO 20022 reason code (AC04 closed account, AC01 wrong account), and the page follows it live. Other banks can pay in. Before every payment the payee's name is checked against the account (match, close match with the real name, no match), and a mismatch needs the payer's explicit confirmation ([ADR 0010](docs/adr/0010-sepa-payments-through-a-clearing-house-over-rabbitmq.md)).
 

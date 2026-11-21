@@ -29,7 +29,7 @@ someone else.
   Reports are idempotent: a payment that is already final ignores a repeated report.
 - **Incoming payment.** The simulator can deliver a credit transfer from another bank; the bank
   credits the account, or returns it (AC01 unknown account, AC04 closed or frozen).
-- **Verification of Payee.** For Kyma Bank IBANs the bank compares the name itself; for other banks it
+- **Verification of Payee.** For Tameio IBANs the bank compares the name itself; for other banks it
   asks the clearing house with a request-reply message (RabbitMQ direct reply-to, 2 s timeout).
   Names are compared after removing accents, punctuation and legal forms (Α.Ε., Ε.Π.Ε., Ι.Κ.Ε. …):
   equal is MATCH, a small edit distance is CLOSE_MATCH (the actual name is shown), anything else is

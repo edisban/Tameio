@@ -14,7 +14,7 @@ accounts and a ledger that never loses or invents a cent, even with many request
 A `banking` module with a double-entry ledger in PostgreSQL:
 
 - **Accounts.** Each business can open current accounts with a Greek IBAN (`GR`, two check digits,
-  bank code `999` of the fictional Kyma Bank, branch `0001`, a 16-digit account number from a
+  bank code `999` of Tameio, the fictional bank this app now is, branch `0001`, a 16-digit account number from a
   sequence), validated with the ISO 13616 mod-97 check. The bank's own internal accounts (settlement
   with the central bank, SEPA clearing, loans, income) live in the same table.
 - **Journal entries and postings.** Every movement of money is one journal entry with two or more

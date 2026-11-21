@@ -35,10 +35,10 @@ const schema = z.object({
 
 type Form = z.infer<typeof schema>
 
-const KYMA_BANK_CODE = '999'
-const isKyma = (iban: string) => {
+const TAMEIO_BANK_CODE = '999'
+const isTameio = (iban: string) => {
   const n = normaliseIban(iban)
-  return n.startsWith('GR') && n.slice(4, 7) === KYMA_BANK_CODE
+  return n.startsWith('GR') && n.slice(4, 7) === TAMEIO_BANK_CODE
 }
 
 const failure = (error: unknown) =>
@@ -106,7 +106,7 @@ export function TransferDialog({ businessId, account, open, onClose }: {
   const { errors } = form.formState
   const values = form.getValues()
   const cents = parseCents(values.amount) ?? 0
-  const sepa = !isKyma(values.creditorIban)
+  const sepa = !isTameio(values.creditorIban)
 
   const close = () => {
     form.reset()
@@ -181,7 +181,7 @@ export function TransferDialog({ businessId, account, open, onClose }: {
                 autoFocus
                 {...form.register('creditorIban', { onChange: e => form.setValue('creditorIban', formatIban(e.target.value)) })}
                 error={!!errors.creditorIban}
-                helperText={errors.creditorIban?.message ?? 'Σε Kyma Bank ή σε άλλη τράπεζα της ζώνης SEPA'}
+                helperText={errors.creditorIban?.message ?? 'Σε λογαριασμό Tameio ή σε άλλη τράπεζα της ζώνης SEPA'}
                 slotProps={{ htmlInput: { style: { fontFamily: 'monospace' }, maxLength: 42 }, inputLabel: { shrink: true } }}
               />
               <TextField
@@ -231,7 +231,7 @@ export function TransferDialog({ businessId, account, open, onClose }: {
               <Row label="IBAN" value={formatIban(values.creditorIban)} mono />
               {values.reference && <Row label="Αιτιολογία" value={values.reference} />}
               <Row label="Από" value={`${account.name} · ${formatIban(account.iban)}`} />
-              <Row label="Τρόπος" value={sepa ? 'SEPA, προς άλλη τράπεζα: εκκαθαρίζεται μέσα στην ημέρα' : 'Μεταφορά στην Kyma Bank: άμεσα'} />
+              <Row label="Τρόπος" value={sepa ? 'SEPA, προς άλλη τράπεζα: εκκαθαρίζεται μέσα στην ημέρα' : 'Μεταφορά μέσα στο Tameio: άμεσα'} />
             </Stack>
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 2 }}>

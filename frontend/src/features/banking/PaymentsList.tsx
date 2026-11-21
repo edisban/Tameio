@@ -39,7 +39,7 @@ export function PaymentsList({ businessId, accountId }: { businessId: string; ac
             <ListItem key={p.id} divider={i < list.length - 1}>
               <ListItemText
                 primary={`${p.direction === 'INCOMING' ? 'Από' : 'Προς'} ${p.counterpartyName}`}
-                secondary={[formatDateTime(p.createdAt), p.scheme === 'SEPA' ? 'SEPA' : 'Kyma Bank', p.reference].filter(Boolean).join(' · ')}
+                secondary={[formatDateTime(p.createdAt), p.scheme === 'SEPA' ? 'SEPA' : 'Tameio', p.reference].filter(Boolean).join(' · ')}
                 slotProps={{ primary: { sx: { fontWeight: 600 } } }}
               />
               <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', ml: 2 }}>

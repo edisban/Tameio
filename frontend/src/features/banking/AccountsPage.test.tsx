@@ -85,7 +85,7 @@ describe('AccountsPage', () => {
         return HttpResponse.json({
           id: 'p9', direction: 'OUTGOING', scheme: 'SEPA', status: 'PENDING', amount: 120.5, accountIban: account.iban,
           counterpartyIban: 'GR1601101250000000012300695', counterpartyName: 'Προμηθευτής Α.Ε.', reference: 'ΤΙΜ 42',
-          endToEndId: 'KYMA123', payeeCheck: 'MATCH', reasonCode: null, reason: null, createdAt: '2026-11-20T11:00:00Z', balanceAfter: 1130,
+          endToEndId: 'TAMEIO123', payeeCheck: 'MATCH', reasonCode: null, reason: null, createdAt: '2026-11-20T11:00:00Z', balanceAfter: 1130,
         }, { status: 201 })
       }),
     )
@@ -143,7 +143,7 @@ describe('AccountsPage', () => {
         sent = (await request.json()) as { confirmedMismatch?: boolean }
         return HttpResponse.json({ id: 'p1', direction: 'OUTGOING', scheme: 'INTERNAL', status: 'COMPLETED', amount: 10,
           accountIban: account.iban, counterpartyIban: 'GR3699900010000000001000001', counterpartyName: 'Λάθος Όνομα', reference: null,
-          endToEndId: 'KYMA1', payeeCheck: 'NO_MATCH', reasonCode: null, reason: null, createdAt: '2026-11-20T11:00:00Z', balanceAfter: 1240.5 },
+          endToEndId: 'TAMEIO1', payeeCheck: 'NO_MATCH', reasonCode: null, reason: null, createdAt: '2026-11-20T11:00:00Z', balanceAfter: 1240.5 },
           { status: 201 })
       }),
     )
@@ -158,7 +158,7 @@ describe('AccountsPage', () => {
 
     const review = within(await screen.findByRole('dialog'))
     expect(await review.findByText(/δεν ταιριάζει με τον κάτοχο/)).toBeInTheDocument()
-    expect(review.getByText(/Μεταφορά στην Kyma Bank: άμεσα/)).toBeInTheDocument()
+    expect(review.getByText(/Μεταφορά μέσα στο Tameio: άμεσα/)).toBeInTheDocument()
     const payButton = review.getByRole('button', { name: /Πληρωμή 10,00/ })
     expect(payButton).toBeDisabled()
 

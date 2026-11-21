@@ -119,7 +119,7 @@ class BankingApiTest {
     }
 
     @Test
-    void opensAnAccountWithAValidGreekIbanOfKymaBank() throws Exception {
+    void opensAnAccountWithAValidGreekIbanOfTameio() throws Exception {
         Account account = open(alpha);
 
         assertThat(Iban.isValid(account.iban())).isTrue();

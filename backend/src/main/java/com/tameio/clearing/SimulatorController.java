@@ -46,7 +46,7 @@ class SimulatorController {
     record Sent(String endToEndId) {
     }
 
-    @Operation(summary = "Another bank sends a SEPA credit transfer to an account at Kyma Bank")
+    @Operation(summary = "Another bank sends a SEPA credit transfer to an account at Tameio")
     @PostMapping("/incoming")
     @ResponseStatus(HttpStatus.ACCEPTED)
     @PreAuthorize("hasRole('ADMIN')")

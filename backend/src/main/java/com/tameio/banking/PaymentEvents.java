@@ -97,7 +97,7 @@ class PaymentEvents {
         }
         Optional<BankAccount> found = accounts.findByIban(Iban.normalise(transfer.creditorIban())).filter(BankAccount::isCustomer);
         if (found.isEmpty()) {
-            return "AC01:No such account at Kyma Bank";
+            return "AC01:No such account at Tameio";
         }
         BankAccount account = found.get();
         if (account.getStatus() != BankAccount.Status.ACTIVE) {

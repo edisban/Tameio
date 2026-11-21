@@ -37,7 +37,7 @@ import java.util.UUID;
 @Transactional(readOnly = true)
 class BankingService {
 
-    /** Kyma Bank's code in Greek IBANs, and its one branch. Fictional: no real bank uses 999. */
+    /** Tameio's bank code in Greek IBANs, and its one branch. Fictional: no real bank uses 999. */
     static final String BANK_CODE = "999";
     static final String BRANCH = "0001";
 
@@ -123,7 +123,7 @@ class BankingService {
         BankAccount creditor = null;
         if (isOurs(creditorIban)) {
             creditor = accounts.findByIban(creditorIban)
-                .orElseThrow(() -> new UnprocessableException("There is no account with this IBAN at Kyma Bank."));
+                .orElseThrow(() -> new UnprocessableException("There is no account with this IBAN at Tameio."));
         }
         PayeeCheck.Answer check = payeeCheck.check(creditorIban, request.creditorName());
         if (check.result() == PayeeCheck.Result.NO_MATCH && !Boolean.TRUE.equals(request.confirmedMismatch())) {
@@ -132,7 +132,8 @@ class BankingService {
 
         BigDecimal amount = request.amount().setScale(2);
         var idempotency = new Ledger.Idempotency(idempotencyKey, hash);
-        String endToEndId = "KYMA" + UUID.randomUUID().toString().replace("-", "").substring(0, 31).toUpperCase();
+        // ISO 20022 allows 35 characters: the bank's name, then 29 random ones
+        String endToEndId = "TAMEIO" + UUID.randomUUID().toString().replace("-", "").substring(0, 29).toUpperCase();
         JournalEntry entry;
         Payment payment;
         if (creditor != null) {
@@ -191,7 +192,7 @@ class BankingService {
         }
     }
 
-    /** An IBAN issued by this bank: Greek, with Kyma Bank's code in the bank part. */
+    /** An IBAN issued by this bank: Greek, with Tameio's bank code in the bank part. */
     static boolean isOurs(String iban) {
         String normalised = Iban.normalise(iban);
         return normalised != null && normalised.startsWith("GR") && normalised.length() == 27 && normalised.substring(4, 7).equals(BANK_CODE);

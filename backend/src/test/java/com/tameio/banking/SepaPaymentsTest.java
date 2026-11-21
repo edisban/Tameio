@@ -117,7 +117,7 @@ class SepaPaymentsTest {
         assertThat(jdbc.queryForObject("select sum(balance) from bank_account", BigDecimal.class)).isEqualByComparingTo("0");
         MvcTestResult list = mvc.get().uri("/api/v1/businesses/{b}/accounts/{a}/payments", businessId, accountId).with(owner).exchange();
         assertThat(list).bodyJson().extractingPath("$.content[0].status").isEqualTo("SETTLED");
-        assertThat(list).bodyJson().extractingPath("$.content[0].endToEndId").asString().startsWith("KYMA");
+        assertThat(list).bodyJson().extractingPath("$.content[0].endToEndId").asString().startsWith("TAMEIO");
     }
 
     @Test

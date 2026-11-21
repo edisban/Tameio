@@ -104,7 +104,7 @@ export function AccountsPage() {
               <CardContent sx={{ textAlign: 'center', py: 6 }}>
                 <AccountBalanceWalletOutlinedIcon sx={{ fontSize: 48, color: 'primary.main' }} />
                 <Typography variant="h6" sx={{ mt: 1 }}>
-                  Ανοίξτε λογαριασμό στην Kyma Bank
+                  Ανοίξτε λογαριασμό στο Tameio
                 </Typography>
                 <Typography color="text.secondary" sx={{ mb: 3 }}>
                   Αμέσως, με δικό σας IBAN. Πληρώστε προμηθευτές και δείτε τα έσοδά σας δίπλα στα λογιστικά σας.
