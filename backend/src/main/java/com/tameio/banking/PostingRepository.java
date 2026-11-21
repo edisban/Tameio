@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.Optional;
 import java.util.UUID;
 
 interface PostingRepository extends JpaRepository<Posting, UUID> {
@@ -24,6 +25,22 @@ interface PostingRepository extends JpaRepository<Posting, UUID> {
         order by p.bookedAt desc, p.id desc""",
         countQuery = "select count(p) from Posting p where p.accountId = :accountId")
     Page<Line> statement(UUID accountId, Pageable pageable);
+
+    /** Money in and out of an account since a date, leaving out loans paid into it. */
+    record Flows(BigDecimal inflow, BigDecimal outflow) {
+    }
+
+    @Query("""
+        select new com.tameio.banking.PostingRepository$Flows(
+            coalesce(sum(case when p.amount > 0 then p.amount else 0 end), 0),
+            coalesce(sum(case when p.amount < 0 then -p.amount else 0 end), 0))
+        from Posting p join p.entry e
+        where p.accountId = :accountId and p.bookedAt >= :since
+          and e.kind <> com.tameio.banking.EntryKind.LOAN_DISBURSEMENT""")
+    Flows flowsSince(UUID accountId, Instant since);
+
+    @Query("select min(p.bookedAt) from Posting p where p.accountId = :accountId")
+    Optional<Instant> firstBooking(UUID accountId);
 
     @Query("select count(distinct p.entry.id) from Posting p")
     long countEntries();

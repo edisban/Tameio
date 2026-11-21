@@ -5,5 +5,7 @@ public enum EntryKind {
     /** Money arriving from outside the bank; on a local stack, a demo deposit stands in for one. */
     INCOMING_PAYMENT,
     /** Money paid out to a supplier at another bank; the demo history books its expenses this way. */
-    OUTGOING_PAYMENT
+    OUTGOING_PAYMENT,
+    /** An approved loan paid into the borrower's account, from the bank's LOANS account. */
+    LOAN_DISBURSEMENT
 }

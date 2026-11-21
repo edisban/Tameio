@@ -2,6 +2,7 @@ package com.tameio.platform.web;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -51,6 +52,11 @@ class ApiExceptionHandler extends ResponseEntityExceptionHandler {
         return problem(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Unsupported file type", e.getMessage());
     }
 
+    @ExceptionHandler(ForbiddenException.class)
+    ProblemDetail forbidden(ForbiddenException e) {
+        return problem(HttpStatus.FORBIDDEN, "Not allowed", e.getMessage());
+    }
+
     @ExceptionHandler(UnprocessableException.class)
     ProblemDetail unprocessable(UnprocessableException e) {
         return problem(HttpStatus.UNPROCESSABLE_CONTENT, "Cannot be carried out", e.getMessage());
@@ -59,6 +65,12 @@ class ApiExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(ConflictException.class)
     ProblemDetail conflict(ConflictException e) {
         return problem(HttpStatus.CONFLICT, "Conflict", e.getMessage());
+    }
+
+    // Two people changed the same row at once (@Version): the second must reload and try again
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    ProblemDetail concurrentChange(ObjectOptimisticLockingFailureException e) {
+        return problem(HttpStatus.CONFLICT, "Changed meanwhile", "Someone else changed this at the same time. Reload and try again.");
     }
 
     // A unique constraint hit by two concurrent requests that both passed the service's own check
