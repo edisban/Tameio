@@ -81,3 +81,9 @@ export async function signInAsAdmin(page: Page) {
   }
   throw new Error('Could not sign in as the administrator')
 }
+
+/** A demo analyst or manager; they exist only when the stack loads demo data, as compose does. */
+export async function signInAsDemoStaff(page: Page, who: 'analyst' | 'manager') {
+  await signIn(page, `${who}@tameio.local`, DEMO_ADMIN_PASSWORD)
+  await expect(page.getByRole('heading', { name: 'Αιτήσεις δανείων' })).toBeVisible()
+}
