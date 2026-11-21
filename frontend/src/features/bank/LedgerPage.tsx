@@ -2,7 +2,7 @@ import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
 import ErrorRoundedIcon from '@mui/icons-material/ErrorRounded'
 import { Alert, Box, Card, CardContent, Chip, Skeleton, Stack, Table, TableBody, TableCell, TableHead, TableRow, Typography } from '@mui/material'
 import { PageHeader } from '../../app/PageHeader'
-import { formatMoney } from '../documents/files'
+import { formatMoney } from '../../format'
 import { internalNames, useTrialBalance } from './backOffice'
 
 const num = { fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' } as const

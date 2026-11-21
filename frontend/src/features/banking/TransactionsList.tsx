@@ -1,7 +1,7 @@
 import CallMadeRoundedIcon from '@mui/icons-material/CallMadeRounded'
 import CallReceivedRoundedIcon from '@mui/icons-material/CallReceivedRounded'
 import { Alert, Avatar, Box, Card, List, ListItem, ListItemAvatar, ListItemText, Skeleton, Stack, TablePagination, Typography } from '@mui/material'
-import { formatDateTime, formatMoney } from '../documents/files'
+import { formatDateTime, formatMoney } from '../../format'
 import type { Page } from '../../api/http'
 import type { Transaction } from './api'
 

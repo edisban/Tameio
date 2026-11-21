@@ -1,12 +1,10 @@
 import { Alert, Box, Breadcrumbs, Card, CardContent, Chip, Link, Skeleton, Stack, Typography } from '@mui/material'
 import { Link as RouterLink, useParams } from 'react-router'
-import { formatDateTime, formatMoney } from '../documents/files'
+import { formatDateTime, formatMoney, formatRate } from '../../format'
 import { useCase, type Case } from './api'
 import { purposeLabel, statusColour, statusLabel } from './labels'
 import { ReviewActions } from './ReviewActions'
 import { RiskPanel } from './RiskPanel'
-
-const percent = new Intl.NumberFormat('el-GR', { style: 'percent', maximumFractionDigits: 2 })
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
@@ -28,7 +26,7 @@ function Terms({ loan }: { loan: Case }) {
           </Typography>
           <Row label="Ποσό" value={formatMoney(loan.amount)} />
           <Row label="Διάρκεια" value={`${loan.termMonths} μήνες`} />
-          <Row label="Δόση" value={`${formatMoney(loan.monthlyInstalment)} με ${percent.format(loan.annualRate)}`} />
+          <Row label="Δόση" value={`${formatMoney(loan.monthlyInstalment)} με ${formatRate(loan.annualRate)}`} />
           <Row label="Σκοπός" value={purposeLabel[loan.purpose]} />
           {loan.description && <Typography color="text.secondary">«{loan.description}»</Typography>}
           <Typography variant="h6" component="h2" sx={{ pt: 1 }}>

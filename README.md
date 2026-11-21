@@ -1,8 +1,70 @@
 # Tameio
 
-A small bank for Greek small businesses, with their books built in. A business holds its money in current accounts with Greek IBANs, uploads receipts that AI reads into an expense book, and (next) borrows with the figures it has already verified. Tameio is itself the bank: a fictional one. Every person, business, movement and document comes from the demo data loader; there is no real money.
+**Tameio is a small, fictional bank for Greek small businesses, with their books built in:** a business keeps
+its money here, its receipts are read by AI into an expense book, and it borrows with the figures it has
+already verified, while the bank's staff review each loan with four eyes.
 
-> Work in progress. The plan is in [docs/design.md](docs/design.md), the decisions behind it in [docs/adr/](docs/adr/).
+```mermaid
+flowchart LR
+    subgraph business[The business: Jack, Lola, Max, Jim]
+        accounts[Current account<br/>Greek IBAN]
+        receipts[Receipts and invoices<br/>read by document AI]
+        books[Expense book<br/>and VAT]
+        apply[Loan application<br/>filled in from the account and the books]
+    end
+    subgraph bank[The bank: analyst, manager, administrator]
+        queue[Loan queue]
+        recommend[Analyst recommends<br/>four-factor risk score]
+        decide[Manager decides<br/>within their limit, never the analyst]
+        ledger[(Double-entry<br/>ledger)]
+    end
+    receipts --> books --> apply
+    accounts --> apply
+    apply -- submitted --> queue --> recommend --> decide
+    decide -- disbursed --> ledger -- money in --> accounts
+```
+
+Every person, business, account movement and document is invented by the demo data loader; there is no real money.
+
+## See it
+
+| The business: a year of expenses | The business: its loans and the next instalment |
+| --- | --- |
+| ![Jack's Café, the expense book by month](docs/screenshots/business-books.png) | ![Jack's Café, a draft and a disbursed loan](docs/screenshots/business-loans.png) |
+| **The bank: a case waiting for the manager** | **Operations: the Grafana dashboard** |
+| ![Lola's Bakery, the risk score with its four factors and the decision form](docs/screenshots/back-office-case.png) | ![Requests, latency, JVM, the reading queue and the bank's figures](docs/screenshots/grafana.png) |
+
+![The rules against a prompted LLM, on 247 receipts from unseen shops](docs/screenshots/field-extraction.png)
+
+## Run it
+
+With Docker, one command:
+
+```bash
+docker compose --profile app up -d --build
+```
+
+Open http://localhost:5180. The first start loads **demo data** (about 20 seconds): four businesses with a
+year of invented history (takings, rent, suppliers, energy, one big purchase each), their accounts and expense
+books. Every figure is made up and every movement goes through the real ledger, so the books balance.
+
+| Sign in as | Password | Sees |
+| --- | --- | --- |
+| jack@tameio.local | jack123 | Jack Harbour: Jack's Café |
+| lola@tameio.local | lola123 | Lola Crumb: Lola's Bakery |
+| max@tameio.local | max123 | Max Pixel: Pixel Studio, a design studio |
+| jim@tameio.local | jim123 | Jim Merriman: The Grinning Fox Pub, on an island and shut in winter |
+| analyst@tameio.local | analyst123 | Sofia Rossi, the back office as a credit analyst |
+| manager@tameio.local | manager123 | Daniel Novak, the back office as a credit manager (approves up to 100.000 €) |
+| admin@tameio.local | admin123 | Olivia Grant, the back office as administrator: everything, including staff and the general ledger |
+
+You can also create your own account with **Εγγραφή**. To start again from nothing:
+`docker compose --profile app down -v` removes the data volumes. Everything runs in containers:
+the React app (nginx), the Spring Boot API, document AI (Python), PostgreSQL, RabbitMQ and file storage (SeaweedFS).
+The RabbitMQ management UI is at http://localhost:15672 (tameio / tameio), Grafana at http://localhost:3000
+(the Tameio dashboard opens by itself; to edit, admin / tameio) and Prometheus at http://localhost:9090.
+
+A ten-minute tour, with who to sign in as and what to click: [docs/demo.md](docs/demo.md).
 
 ## What works today
 
@@ -15,21 +77,21 @@ A small bank for Greek small businesses, with their books built in. A business h
 7. **Bank staff and their access.** The bank's staff never sign up: an administrator creates each account with a role (credit analyst, credit manager, administrator) and an approval limit, and hands over a temporary password that must be replaced at first sign-in. Disabling an account, resetting its password, changing its role or "sign out everywhere" ends that person's sessions at once: every request checks the token's session version against the account.
 8. **Current accounts on a double-entry ledger.** A business opens accounts with Greek IBANs of Tameio and sees every movement with the balance after it; on a local stack a demo deposit adds money. Every movement is a balanced journal entry: the database refuses unbalanced or altered entries, and the ledger locks accounts in a fixed order so concurrent entries never deadlock or overdraw. Bank staff search customer accounts, freeze them, and see the trial balance, which is always zero ([ADR 0009](docs/adr/0009-core-banking-double-entry-ledger.md)).
 9. **Loans with maker-checker.** A business applies for a loan (amount, term, purpose); the application is filled in from its account history and expense book, saved as a draft and submitted when ready. In the back office an analyst takes the case, sees a risk score of four explained factors (repayment capacity, track record, cash cushion, loan size; 25 points each) and recommends with a reason. A manager whose approval limit covers the amount decides, and can never be the person who recommended: the service refuses it and so does a database constraint. An approved loan is paid into the account as one ledger entry. The score helps; a person always decides ([ADR 0010](docs/adr/0010-loan-review-state-machine-and-maker-checker.md)).
-10. **Demo data.** A local stack starts with four businesses and a year of invented history in their accounts and expense books, loan applications in every state, plus demo staff (see below).
-
-Coming next: a review of the whole codebase and a guided ten-minute demo ([docs/design.md](docs/design.md#12-delivery-plan)).
+10. **Repayment.** A disbursed loan gets a monthly schedule; a nightly job marks each instalment as due once its date has come, and the business sees the next one.
+11. **Demo data.** A local stack starts with four businesses, each with a year of invented history in its account and expense book, loan applications in every state, and the bank's staff (see [Run it](#run-it)).
 
 ## Stack
 
 | Layer | Choice |
 | --- | --- |
 | Backend | Java 21, Spring Boot 4, Spring Modulith (event publication registry as outbox), Spring Security (JWT sessions in HttpOnly cookies, CSRF), Spring Data JPA, Spring AMQP |
-| Messaging | RabbitMQ 4: quorum work queue for document reading, retries with back-off, dead-letter queue ([ADR 0008](docs/adr/0008-rabbitmq-work-queue-for-document-reading.md)); no Kafka |
-| Database | PostgreSQL 17, schema owned by Flyway (`ddl-auto: validate`) |
-| File storage | SeaweedFS in a container. The code talks to it with the standard S3 protocol, so production can use any S3-compatible service without code changes |
-| Frontend | React 19, TypeScript, Vite, MUI, TanStack Query, React Hook Form + Zod |
-| Document AI | Python 3.12, FastAPI, Tesseract OCR (Greek), scikit-learn |
-| Tests | JUnit 5, Testcontainers, MockMvc, JaCoCo; Vitest, Testing Library, MSW; Playwright |
+| Messaging | RabbitMQ 4: quorum work queue for document reading, retries with back-off, dead-letter queue ([ADR 0008](docs/adr/0008-rabbitmq-work-queue-for-document-reading.md)) |
+| Database | PostgreSQL 17, schema owned by Flyway (`ddl-auto: validate`); advisory locks for work that must happen once across instances |
+| File storage | SeaweedFS, spoken to over the S3 API, so any S3-compatible service works without code changes |
+| Frontend | React 19, TypeScript, Vite, MUI, TanStack Query, React Hook Form + Zod, served by nginx |
+| Document AI | Python 3.12, FastAPI, Tesseract OCR (Greek), scikit-learn; a comparison with Qwen2.5 prompted and fine-tuned with LoRA |
+| Operations | Micrometer, Prometheus, Grafana (provisioned), one alert rule, nginx in front of one or more backends, k6 |
+| Tests | JUnit 5, Testcontainers, MockMvc, JaCoCo, Spotless; Vitest, Testing Library, MSW; Playwright; pytest |
 | CI | GitHub Actions: backend, frontend, document AI and end-to-end jobs |
 
 ## Architecture
@@ -37,26 +99,32 @@ Coming next: a review of the whole codebase and a guided ten-minute demo ([docs/
 ```mermaid
 flowchart LR
     browser[React app<br/>Vite · MUI · TanStack Query]
-    subgraph api[Spring Boot · modular monolith]
+    nginx[nginx<br/>static app · /api to the backends]
+    subgraph api[Spring Boot · modular monolith, one or more instances]
         identity[identity]
         documents[documents]
         accounting[accounting]
         banking[banking<br/>double-entry ledger]
-        platform[platform<br/>security · errors · persistence · storage]
+        lending[lending<br/>review · repayment]
+        platform[platform<br/>security · errors · persistence · storage · locks]
     end
-    db[(PostgreSQL<br/>Flyway · outbox)]
+    db[(PostgreSQL<br/>Flyway · outbox · advisory locks)]
     s3[(File storage<br/>SeaweedFS)]
-    mq{{RabbitMQ<br/>tameio.documents.read<br/>+ dead-letter queue}}
+    mq{RabbitMQ<br/>tameio.documents.read<br/>+ dead-letter queue}
     ai[Document AI<br/>FastAPI · Tesseract · scikit-learn]
+    prom[Prometheus → Grafana]
 
-    browser -- REST, session cookie --> api
+    browser --> nginx --> api
     api --> db
     api --> s3
-    documents -- checks membership --> identity
     documents -- DocumentUploaded, after commit --> mq
     mq -- reading job --> documents
     documents -- POST /v1/read --> ai
     documents -. DocumentReviewed .-> accounting
+    lending -- account figures, disbursement --> banking
+    lending -- expenses of the last year --> accounting
+    prom -. scrapes .-> api
+    prom -. scrapes .-> mq
 ```
 
 - **Modular monolith.** One deployable, split into business modules (`identity`, `documents`, `accounting`, `banking` and `lending`). Spring Modulith tests that a module only uses another module's public API, so a module can later be moved into its own service if it ever needs to be ([ADR 0001](docs/adr/0001-modular-monolith-first.md)).
@@ -131,37 +199,7 @@ What is not handled: open-source nginx checks replicas only passively, on real r
 is up but slow keeps getting its share; a new replica takes up to 10 s to receive traffic and 15 s to appear
 in Prometheus.
 
-## Run it locally
-
-### Just see the app
-
-Requirements: Docker only.
-
-```bash
-docker compose --profile app up -d --build
-```
-
-Open http://localhost:5180. The first start loads **demo data** (about 20 seconds): four businesses with a
-year of invented history (takings, rent, suppliers, energy, one big purchase each), their accounts and expense
-books. Every figure is made up and every movement goes through the real ledger, so the books balance.
-
-| Sign in as | Password | Sees |
-| --- | --- | --- |
-| jack@tameio.local | jack123 | Jack Harbour: Jack's Café |
-| lola@tameio.local | lola123 | Lola Crumb: Lola's Bakery |
-| max@tameio.local | max123 | Max Pixel: Pixel Studio, a design studio |
-| jim@tameio.local | jim123 | Jim Merriman: The Grinning Fox Pub, on an island and shut in winter |
-| analyst@tameio.local | analyst123 | Sofia Rossi, the back office as a credit analyst |
-| manager@tameio.local | manager123 | Daniel Novak, the back office as a credit manager (approves up to 100.000 €) |
-| admin@tameio.local | admin123 | Olivia Grant, the back office as administrator: everything, including staff and the general ledger |
-
-You can also create your own account with **Εγγραφή**. To start again from nothing:
-`docker compose --profile app down -v` removes the data volumes. Everything runs in containers:
-the React app (nginx), the Spring Boot API, document AI (Python), PostgreSQL, RabbitMQ and file storage (SeaweedFS).
-The RabbitMQ management UI is at http://localhost:15672 (tameio / tameio), Grafana at http://localhost:3000
-(the Tameio dashboard opens by itself; to edit, admin / tameio) and Prometheus at http://localhost:9090.
-
-### Work on the code
+## Work on the code
 
 Requirements: Docker, JDK 21 or newer, Node 22.
 
@@ -226,10 +264,38 @@ The backend reads its settings from environment variables prefixed `TAMEIO_`. Th
 ## Project layout
 
 ```
-backend/    Spring Boot app, one package per module (platform, identity, documents, ...)
-ml/         Python services; document-ai reads receipts and suggests an expense category,
-            and compares its rules with a prompted and a fine-tuned LLM (extraction/, notebooks/)
-frontend/   React app, one folder per feature
-infra/      Local infrastructure settings (file storage access keys)
-docs/       Design document, architecture decision records and model cards
+backend/    Spring Boot app, one package per module (platform, identity, documents, accounting, banking, lending)
+frontend/   React app, one folder per feature; nginx.conf puts it in front of the backend
+ml/         document-ai: reads receipts and suggests an expense category, and compares its rules
+            with a prompted and a fine-tuned LLM (extraction/, notebooks/, results/)
+infra/      Prometheus (scrape config, alert), Grafana (data source, dashboard), file storage keys
+load/       k6 load test
+docs/       Design document, decisions (adr/), model card (models/), demo script, screenshots
 ```
+
+## Limits
+
+Tameio shows how a bank's systems fit together; it is not one. Compared with a real bank:
+
+- **Instalments are marked due, never collected.** No direct debit, no arrears or late interest, no early
+  repayment; every instalment is the same annuity amount, without correcting the last one for rounding.
+- **No strong customer authentication or KYC.** Sign-in is a password and a session cookie, with no second
+  factor; anyone can register a business, and its ΑΦΜ is checked only by its check digit, not with the tax
+  authority. There is no anti-money-laundering screening.
+- **No credit bureau.** Nothing is asked of Τειρεσίας or any other register: the risk score sees only what
+  the business did at Tameio, and it is a four-factor points table, not a statistical model. One interest
+  rate for everyone, no collateral or guarantors.
+- **Money only comes in.** Deposits on a local stack stand in for incoming payments; there are no transfers,
+  no payments to other banks and no cards. One currency, euro.
+- **Invented data.** Document AI learnt from generated receipts, the demo history is generated, and the bank
+  code 999 belongs to no bank.
+- **One machine.** One database without backups or failover, secrets in the compose file, no audit log of who
+  did what.
+
+## How I built this
+
+I designed Tameio and reviewed it throughout: the scope and what to leave out, the module boundaries, the
+decisions recorded as ADRs, the data model and every change before it was merged. The code was written with
+[Claude Code](https://claude.com/claude-code), Anthropic's coding agent, one phase at a time; each phase
+ended with every test green and my review before the next one started. The [design document](docs/design.md)
+keeps the plan and the reasons behind it.

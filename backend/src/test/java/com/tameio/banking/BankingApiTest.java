@@ -7,7 +7,6 @@ import com.tameio.platform.validation.Iban;
 import com.tameio.platform.web.UnprocessableException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
@@ -45,22 +44,21 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 @Import(TestcontainersConfiguration.class)
 class BankingApiTest {
 
-    @Autowired
-    MockMvcTester mvc;
-
-    @Autowired
-    BankingService banking;
-
-    @Autowired
-    JdbcTemplate jdbc;
-
-    @Autowired
-    TransactionTemplate transaction;
-
-    @Autowired
-    Ledger ledger;
+    private final MockMvcTester mvc;
+    private final BankingService banking;
+    private final JdbcTemplate jdbc;
+    private final TransactionTemplate transaction;
+    private final Ledger ledger;
 
     /** A business owner whose id the test knows, so it can also call the service directly. */
+    BankingApiTest(MockMvcTester mvc, BankingService banking, JdbcTemplate jdbc, TransactionTemplate transaction, Ledger ledger) {
+        this.mvc = mvc;
+        this.banking = banking;
+        this.jdbc = jdbc;
+        this.transaction = transaction;
+        this.ledger = ledger;
+    }
+
     private record Owner(CurrentUser user, RequestPostProcessor auth, UUID businessId) {
     }
 
@@ -108,7 +106,7 @@ class BankingApiTest {
     /** Moves money between two customer accounts through the ledger. */
     private void move(Account from, Account to, String amount) {
         BigDecimal value = new BigDecimal(amount);
-        transaction.executeWithoutResult(status -> ledger.book(EntryKind.OUTGOING_PAYMENT, "test", null, "test", null, List.of(
+        transaction.executeWithoutResult(status -> ledger.book(EntryKind.OUTGOING_PAYMENT, "test", null, "test", List.of(
             new Ledger.Leg(from.id(), value.negate(), "to", to.iban()),
             new Ledger.Leg(to.id(), value, "from", from.iban()))));
     }
@@ -269,12 +267,12 @@ class BankingApiTest {
 
         transaction.executeWithoutResult(status -> {
             for (int i = 0; i < 3; i++) {
-                ledger.book(EntryKind.INCOMING_PAYMENT, "in", null, "test", null, List.of(
+                ledger.book(EntryKind.INCOMING_PAYMENT, "in", null, "test", List.of(
                     new Ledger.Leg(settlement, new BigDecimal("-10.00"), null, null),
                     new Ledger.Leg(account.id(), new BigDecimal("10.00"), null, null)));
             }
             // Only possible if the three credits above all counted
-            ledger.book(EntryKind.OUTGOING_PAYMENT, "out", null, "test", null, List.of(
+            ledger.book(EntryKind.OUTGOING_PAYMENT, "out", null, "test", List.of(
                 new Ledger.Leg(account.id(), new BigDecimal("-30.00"), null, null),
                 new Ledger.Leg(settlement, new BigDecimal("30.00"), null, null)));
         });

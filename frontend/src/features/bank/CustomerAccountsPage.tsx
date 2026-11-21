@@ -26,7 +26,7 @@ import { PageHeader } from '../../app/PageHeader'
 import { hasRole, useSession } from '../../auth/session'
 import type { BankAccount } from '../banking/api'
 import { formatIban } from '../banking/iban'
-import { formatMoney } from '../documents/files'
+import { formatMoney } from '../../format'
 import { useCustomerAccounts, useFreeze } from './backOffice'
 
 function FreezeDialog({ account, onClose }: { account: BankAccount | null; onClose: () => void }) {

@@ -1,7 +1,7 @@
 import ContentCopyRoundedIcon from '@mui/icons-material/ContentCopyRounded'
 import { Box, ButtonBase, Chip, IconButton, Stack, Tooltip, Typography } from '@mui/material'
 import { useState } from 'react'
-import { formatMoney } from '../documents/files'
+import { formatMoney } from '../../format'
 import type { BankAccount } from './api'
 import { formatIban } from './iban'
 

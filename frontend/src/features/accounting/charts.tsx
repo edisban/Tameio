@@ -1,6 +1,6 @@
 import { Box, Stack, Tooltip, Typography, useTheme } from '@mui/material'
 import { useEffect, useRef, useState } from 'react'
-import { formatMoney } from '../documents/files'
+import { formatMoney } from '../../format'
 
 /** Clean axis steps: 1, 2 or 5 times a power of ten, so ticks read 0 / 200 / 400. */
 export function niceMax(value: number, ticks = 4): { max: number; step: number } {

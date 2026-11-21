@@ -1,5 +1,6 @@
 package com.tameio.platform.persistence;
 
+import com.tameio.Latches;
 import com.tameio.TestcontainersConfiguration;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -11,14 +12,13 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
+import static com.tameio.Latches.await;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /** Advisory locks against a real PostgreSQL: one transaction plays this instance, another a second one. */
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)
 class AdvisoryLocksTest {
-
-    private static final long WAIT_SECONDS = 5;
 
     private final AdvisoryLocks locks;
     private final TransactionTemplate transaction;
@@ -51,16 +51,7 @@ class AdvisoryLocksTest {
 
         assertThat(thisInstance).isNotDone();
         release.countDown();
-        otherInstance.get(WAIT_SECONDS, TimeUnit.SECONDS);
-        thisInstance.get(WAIT_SECONDS, TimeUnit.SECONDS);
-    }
-
-    private static void await(CountDownLatch latch) {
-        try {
-            assertThat(latch.await(WAIT_SECONDS, TimeUnit.SECONDS)).isTrue();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new IllegalStateException(e);
-        }
+        otherInstance.get(Latches.WAIT_SECONDS, TimeUnit.SECONDS);
+        thisInstance.get(Latches.WAIT_SECONDS, TimeUnit.SECONDS);
     }
 }

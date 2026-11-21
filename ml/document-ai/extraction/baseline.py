@@ -11,7 +11,6 @@ from training.dataset import Example
 
 
 class Baseline:
-    name = "baseline"
     model_name = "rules + TF-IDF and logistic regression"
     hardware = f"CPU, {os.cpu_count()} threads"
 

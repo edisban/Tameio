@@ -4,7 +4,6 @@ import com.jayway.jsonpath.JsonPath;
 import com.tameio.TestcontainersConfiguration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
@@ -37,14 +36,14 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 @Import({TestcontainersConfiguration.class, ScriptedDocumentAi.class})
 class DocumentApiTest {
 
-    @Autowired
-    MockMvcTester mvc;
-
-    @Autowired
-    ApplicationEvents events;
+    private final MockMvcTester mvc;
 
     private RequestPostProcessor owner;
     private String businessId;
+
+    DocumentApiTest(MockMvcTester mvc) {
+        this.mvc = mvc;
+    }
 
     @BeforeEach
     void registerABusiness() throws Exception {
@@ -96,7 +95,7 @@ class DocumentApiTest {
     }
 
     @Test
-    void announcesEachUpload() throws Exception {
+    void announcesEachUpload(ApplicationEvents events) throws Exception {
         MvcTestResult uploaded = upload(owner, "receipt.pdf", "application/pdf", pdf());
         String documentId = JsonPath.read(uploaded.getResponse().getContentAsString(), "$.id");
 

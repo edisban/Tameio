@@ -2,7 +2,6 @@ package com.tameio.identity;
 
 import com.tameio.TestcontainersConfiguration;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.DefaultApplicationArguments;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -18,11 +17,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Import(TestcontainersConfiguration.class)
 class BootstrapAdminTest {
 
-    @Autowired
-    UserAccountRepository accounts;
+    private final UserAccountRepository accounts;
+    private final BootstrapAdmin bootstrap;
 
-    @Autowired
-    BootstrapAdmin bootstrap;
+    BootstrapAdminTest(UserAccountRepository accounts, BootstrapAdmin bootstrap) {
+        this.accounts = accounts;
+        this.bootstrap = bootstrap;
+    }
 
     @Test
     void createsTheFirstAdministratorWithAPasswordToChange() {

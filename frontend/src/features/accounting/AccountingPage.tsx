@@ -29,7 +29,7 @@ import { Link as RouterLink, useParams } from 'react-router'
 import { useBusiness } from '../businesses/api'
 import { BusinessHeader } from '../businesses/BusinessHeader'
 import { categoryLabel, categoryLabels } from '../documents/categories'
-import { formatDay, formatMoney } from '../documents/files'
+import { formatDay, formatMoney } from '../../format'
 import { downloadExpenses, useExpenses, useYearSummary, type YearSummary } from './api'
 import { BarList, ColumnChart } from './charts'
 

@@ -98,7 +98,7 @@ class DemoData implements ApplicationRunner {
 
     private void seed() {
         LocalDate end = LocalDate.now(clock.withZone(ZoneId.of("Europe/Athens")));
-        var bankers = new DemoBusinessReady.Bankers(staff(STAFF.get(0)), staff(STAFF.get(1)), staff(STAFF.get(2)));
+        var bankers = new DemoBusinessReady.Bankers(staff(UserRole.ANALYST), staff(UserRole.MANAGER), staff(UserRole.ADMIN));
         for (DemoOwner demo : OWNERS) {
             UserAccount owner = accounts.save(
                 UserAccount.create(demo.email(), passwords.encode(demo.password()), demo.name(), UserRole.BUSINESS));
@@ -106,7 +106,8 @@ class DemoData implements ApplicationRunner {
         }
     }
 
-    private DemoBusinessReady.Banker staff(DemoStaff demo) {
+    private DemoBusinessReady.Banker staff(UserRole role) {
+        DemoStaff demo = STAFF.stream().filter(member -> member.role() == role).findFirst().orElseThrow();
         UserAccount account = accounts.findByEmail(demo.email()).orElseGet(() -> {
             String hash = passwords.encode(demo.password());
             UserAccount created = UserAccount.staff(demo.email(), hash, demo.name(), demo.role(), demo.approvalLimit());

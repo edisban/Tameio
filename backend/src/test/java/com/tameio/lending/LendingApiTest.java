@@ -27,6 +27,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
+import static com.tameio.Latches.await;
 import static com.tameio.TestUsers.freshAfm;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -323,6 +324,18 @@ class LendingApiTest {
     }
 
     @Test
+    void onceEveryInstalmentIsDueThereIsNoNextOne() throws Exception {
+        String id = disbursed("5000");
+        jdbc.update("update loan_instalment set due_on = current_date - 1 where loan_application_id = ?::uuid", id);
+
+        instalmentsDue.run();
+
+        MvcTestResult seen = mvc.get().uri("/api/v1/businesses/{b}/loan-applications/{id}", businessId, id).with(owner).exchange();
+        assertThat(seen).bodyJson().extractingPath("$.repayment.instalmentsDue").isEqualTo(24);
+        assertThat(seen).bodyJson().extractingPath("$.repayment.nextDueOn").isNull();
+    }
+
+    @Test
     void runningTheJobAgainTheSameDayChangesNothing() throws Exception {
         String id = disbursed("5000");
         firstInstalmentFellDueYesterday(id);
@@ -349,14 +362,5 @@ class LendingApiTest {
         assertThat(instalments(id, "DUE")).isZero();
         release.countDown();
         otherInstance.get(5, TimeUnit.SECONDS);
-    }
-
-    private static void await(CountDownLatch latch) {
-        try {
-            assertThat(latch.await(5, TimeUnit.SECONDS)).isTrue();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new IllegalStateException(e);
-        }
     }
 }

@@ -6,7 +6,6 @@ import com.tameio.documents.DocumentReviewed;
 import com.tameio.documents.ExpenseCategory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.ApplicationEventPublisher;
@@ -41,17 +40,18 @@ class AccountingApiTest {
 
     private static final int YEAR = 2026;
 
-    @Autowired
-    MockMvcTester mvc;
-
-    @Autowired
-    ApplicationEventPublisher events;
-
-    @Autowired
-    TransactionTemplate transaction;
+    private final MockMvcTester mvc;
+    private final ApplicationEventPublisher events;
+    private final TransactionTemplate transaction;
 
     private RequestPostProcessor owner;
     private UUID businessId;
+
+    AccountingApiTest(MockMvcTester mvc, ApplicationEventPublisher events, TransactionTemplate transaction) {
+        this.mvc = mvc;
+        this.events = events;
+        this.transaction = transaction;
+    }
 
     @BeforeEach
     void registerABusiness() throws Exception {

@@ -6,7 +6,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
@@ -42,20 +41,20 @@ class DocumentReadingTest {
 
     private static final Duration PATIENCE = Duration.ofSeconds(30);
 
-    @Autowired
-    MockMvcTester mvc;
-
-    @Autowired
-    ScriptedDocumentAi ai;
-
-    @Autowired
-    RabbitTemplate rabbit;
-
-    @Autowired
-    DocumentReader reader;
+    private final MockMvcTester mvc;
+    private final ScriptedDocumentAi ai;
+    private final RabbitTemplate rabbit;
+    private final DocumentReader reader;
 
     private RequestPostProcessor owner;
     private String businessId;
+
+    DocumentReadingTest(MockMvcTester mvc, ScriptedDocumentAi ai, RabbitTemplate rabbit, DocumentReader reader) {
+        this.mvc = mvc;
+        this.ai = ai;
+        this.rabbit = rabbit;
+        this.reader = reader;
+    }
 
     @BeforeEach
     void registerABusiness() throws Exception {

@@ -45,12 +45,6 @@ class JournalEntry {
     @Column(name = "initiated_by", nullable = false, length = 64)
     private String initiatedBy;
 
-    @Column(name = "idempotency_key", length = 100)
-    private String idempotencyKey;
-
-    @Column(name = "request_hash", length = 64)
-    private String requestHash;
-
     @Column(name = "booked_at", nullable = false)
     private Instant bookedAt;
 
@@ -58,17 +52,12 @@ class JournalEntry {
     @OrderBy("position")
     private List<Posting> postings = new ArrayList<>();
 
-    static JournalEntry of(EntryKind kind, String description, String reference, String initiatedBy,
-                           Ledger.Idempotency idempotency, Instant bookedAt) {
+    static JournalEntry of(EntryKind kind, String description, String reference, String initiatedBy, Instant bookedAt) {
         var entry = new JournalEntry();
         entry.kind = kind;
         entry.description = description;
         entry.reference = reference;
         entry.initiatedBy = initiatedBy;
-        if (idempotency != null) {
-            entry.idempotencyKey = idempotency.key();
-            entry.requestHash = idempotency.requestHash();
-        }
         entry.bookedAt = bookedAt;
         return entry;
     }

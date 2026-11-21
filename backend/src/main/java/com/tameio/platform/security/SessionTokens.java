@@ -9,10 +9,10 @@ import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.stereotype.Component;
 
-import javax.crypto.SecretKey;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Collection;
+import javax.crypto.SecretKey;
 
 /**
  * Issues the signed token that represents a signed-in user. It travels in an HttpOnly cookie and is

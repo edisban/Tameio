@@ -27,9 +27,6 @@ A `banking` module with a double-entry ledger in PostgreSQL:
 - **Concurrency.** An entry locks the accounts it touches with `SELECT … FOR UPDATE`, always in
   ascending id order, so two entries on the same accounts in opposite directions wait for each
   other instead of deadlocking.
-- **Idempotency.** A request that books money can carry an `Idempotency-Key`. The key and a hash of
-  the request are stored with the entry (unique per user), so a retried request returns the original
-  entry instead of booking twice, and a reused key with a different request is refused.
 - **One way to move money.** Only the `Ledger` class books entries; every feature (deposits, loans,
   fees) goes through it.
 - **Trial balance.** Because every entry sums to zero, the sum of all balances is always zero. The back

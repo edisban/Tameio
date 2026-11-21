@@ -65,6 +65,31 @@ describe('LoanQueuePage', () => {
   })
 })
 
+describe('LoanQueuePage paging', () => {
+  it('asks the bank for the next page of applications', async () => {
+    const pages: string[] = []
+    server.use(
+      http.get('*/api/v1/me', () => HttpResponse.json(analyst)),
+      http.get('*/api/v1/bank/loan-applications', ({ request }) => {
+        const number = Number(new URL(request.url).searchParams.get('page'))
+        pages.push(String(number))
+        const name = number === 0 ? 'Φούρνος Η Ζύμη' : 'Ταβέρνα Η Αυλή'
+        return HttpResponse.json({
+          content: [{ ...item, id: `l${number}`, businessName: name }],
+          page: { size: 25, number, totalElements: 26, totalPages: 2 },
+        })
+      }),
+    )
+    const { user } = renderWithProviders(<LoanQueuePage />)
+    await screen.findByRole('link', { name: 'Φούρνος Η Ζύμη' })
+
+    await user.click(screen.getByRole('button', { name: /next page/i }))
+
+    expect(await screen.findByRole('link', { name: 'Ταβέρνα Η Αυλή' })).toBeInTheDocument()
+    expect(pages).toEqual(['0', '1'])
+  })
+})
+
 describe('LoanCasePage', () => {
   it('explains each risk factor with what was measured and the points it earned', async () => {
     server.use(

@@ -25,7 +25,8 @@ import { useState } from 'react'
 import { Link as RouterLink } from 'react-router'
 import { useDocuments, useReadAgain, type DocumentItem } from './api'
 import { categoryLabel } from './categories'
-import { formatBytes, formatDateTime, formatDay, formatMoney, typeLabel } from './files'
+import { formatBytes, typeLabel } from './files'
+import { formatDateTime, formatDay, formatMoney } from '../../format'
 import { failureLabel, statusColour, statusLabel } from './status'
 
 const PAGE_SIZE = 20

@@ -35,12 +35,6 @@ export function formatBytes(bytes: number): string {
   return `${sizeFormat.format(bytes / (1024 * 1024))} MB`
 }
 
-const dateFormat = new Intl.DateTimeFormat('el-GR', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Europe/Athens' })
-
-export function formatDateTime(iso: string): string {
-  return dateFormat.format(new Date(iso))
-}
-
 const typeLabels: Record<string, string> = {
   'application/pdf': 'PDF',
   'image/jpeg': 'JPEG',
@@ -49,17 +43,4 @@ const typeLabels: Record<string, string> = {
 
 export function typeLabel(mediaType: string): string {
   return typeLabels[mediaType] ?? mediaType
-}
-
-const moneyFormat = new Intl.NumberFormat('el-GR', { style: 'currency', currency: 'EUR' })
-
-export function formatMoney(amount: number): string {
-  return moneyFormat.format(amount)
-}
-
-const dayFormat = new Intl.DateTimeFormat('el-GR', { dateStyle: 'medium', timeZone: 'UTC' })
-
-/** A calendar date such as 2026-11-14, shown without shifting it through a time zone. */
-export function formatDay(isoDate: string): string {
-  return dayFormat.format(new Date(`${isoDate}T00:00:00Z`))
 }

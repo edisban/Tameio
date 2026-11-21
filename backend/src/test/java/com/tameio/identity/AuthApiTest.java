@@ -4,7 +4,6 @@ import com.tameio.TestcontainersConfiguration;
 import com.tameio.platform.security.SessionCookies;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
@@ -30,11 +29,13 @@ class AuthApiTest {
 
     private static final String PASSWORD = "correct horse battery";
 
-    @Autowired
-    MockMvcTester mvc;
+    private final MockMvcTester mvc;
+    private final UserAccountRepository accounts;
 
-    @Autowired
-    UserAccountRepository accounts;
+    AuthApiTest(MockMvcTester mvc, UserAccountRepository accounts) {
+        this.mvc = mvc;
+        this.accounts = accounts;
+    }
 
     @Test
     void storesPasswordsAsArgon2idHashes() {

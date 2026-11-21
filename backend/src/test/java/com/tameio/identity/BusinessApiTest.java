@@ -3,7 +3,6 @@ package com.tameio.identity;
 import com.jayway.jsonpath.JsonPath;
 import com.tameio.TestcontainersConfiguration;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
@@ -12,7 +11,6 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
-
 
 import static com.tameio.TestUsers.businessUser;
 import static com.tameio.TestUsers.freshAfm;
@@ -29,8 +27,11 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 @Import(TestcontainersConfiguration.class)
 class BusinessApiTest {
 
-    @Autowired
-    MockMvcTester mvc;
+    private final MockMvcTester mvc;
+
+    BusinessApiTest(MockMvcTester mvc) {
+        this.mvc = mvc;
+    }
 
     private MvcTestResult register(RequestPostProcessor user, String afm, String name) {
         return mvc.post().uri("/api/v1/businesses").with(user).with(csrf())
