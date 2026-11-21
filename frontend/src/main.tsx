@@ -12,11 +12,13 @@ import { SignInPage } from './auth/SignInPage'
 import { SignUpPage } from './auth/SignUpPage'
 import { ChangePasswordPage } from './auth/ChangePasswordPage'
 import { HomeRedirect } from './auth/HomeRedirect'
-import { BankHomePage } from './features/bank/BankHomePage'
 import { StaffPage } from './features/bank/StaffPage'
 import { CustomerAccountsPage } from './features/bank/CustomerAccountsPage'
 import { LedgerPage } from './features/bank/LedgerPage'
 import { AccountsPage } from './features/banking/AccountsPage'
+import { LoansPage } from './features/lending/LoansPage'
+import { LoanCasePage } from './features/lending/LoanCasePage'
+import { LoanQueuePage } from './features/lending/LoanQueuePage'
 import { AccountingPage } from './features/accounting/AccountingPage'
 import { BusinessesPage } from './features/businesses/BusinessesPage'
 import { BusinessDocumentsPage } from './features/documents/BusinessDocumentsPage'
@@ -52,7 +54,8 @@ const router = createBrowserRouter([
     ),
     children: [
       { index: true, element: <HomeRedirect /> },
-      { path: 'bank', element: <BankHomePage /> },
+      { path: 'bank', element: <LoanQueuePage /> },
+      { path: 'bank/loans/:id', element: <LoanCasePage /> },
       { path: 'bank/staff', element: <StaffPage /> },
       { path: 'bank/accounts', element: <CustomerAccountsPage /> },
       { path: 'bank/ledger', element: <LedgerPage /> },
@@ -60,6 +63,7 @@ const router = createBrowserRouter([
       { path: 'businesses/:businessId', element: <BusinessDocumentsPage /> },
       { path: 'businesses/:businessId/accounting', element: <AccountingPage /> },
       { path: 'businesses/:businessId/accounts', element: <AccountsPage /> },
+      { path: 'businesses/:businessId/loans', element: <LoansPage /> },
       { path: 'businesses/:businessId/documents/:documentId', element: <DocumentPage /> },
     ],
   },
