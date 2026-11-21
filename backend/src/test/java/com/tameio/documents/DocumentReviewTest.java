@@ -4,7 +4,6 @@ import com.jayway.jsonpath.JsonPath;
 import com.tameio.TestcontainersConfiguration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
@@ -41,14 +40,14 @@ class DocumentReviewTest {
         {"issuerAfm": "094014201", "issueDate": "2026-11-14", "netAmount": 10.00, "vatAmount": 2.40,
          "totalAmount": 12.40, "category": "FUEL"}""";
 
-    @Autowired
-    MockMvcTester mvc;
-
-    @Autowired
-    ApplicationEvents events;
+    private final MockMvcTester mvc;
 
     private RequestPostProcessor owner;
     private String businessId;
+
+    DocumentReviewTest(MockMvcTester mvc) {
+        this.mvc = mvc;
+    }
 
     @BeforeEach
     void registerABusiness() throws Exception {
@@ -81,7 +80,7 @@ class DocumentReviewTest {
     }
 
     @Test
-    void confirmingWhatWasReadRecordsNoCorrections() throws Exception {
+    void confirmingWhatWasReadRecordsNoCorrections(ApplicationEvents events) throws Exception {
         String id = uploadAndWait("receipt", "READ");
 
         MvcTestResult reviewed = review(id, AS_READ);

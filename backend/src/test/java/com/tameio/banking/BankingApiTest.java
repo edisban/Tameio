@@ -7,7 +7,6 @@ import com.tameio.platform.validation.Iban;
 import com.tameio.platform.web.UnprocessableException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
@@ -45,22 +44,21 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 @Import(TestcontainersConfiguration.class)
 class BankingApiTest {
 
-    @Autowired
-    MockMvcTester mvc;
-
-    @Autowired
-    BankingService banking;
-
-    @Autowired
-    JdbcTemplate jdbc;
-
-    @Autowired
-    TransactionTemplate transaction;
-
-    @Autowired
-    Ledger ledger;
+    private final MockMvcTester mvc;
+    private final BankingService banking;
+    private final JdbcTemplate jdbc;
+    private final TransactionTemplate transaction;
+    private final Ledger ledger;
 
     /** A business owner whose id the test knows, so it can also call the service directly. */
+    BankingApiTest(MockMvcTester mvc, BankingService banking, JdbcTemplate jdbc, TransactionTemplate transaction, Ledger ledger) {
+        this.mvc = mvc;
+        this.banking = banking;
+        this.jdbc = jdbc;
+        this.transaction = transaction;
+        this.ledger = ledger;
+    }
+
     private record Owner(CurrentUser user, RequestPostProcessor auth, UUID businessId) {
     }
 

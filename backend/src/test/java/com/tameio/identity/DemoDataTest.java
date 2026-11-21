@@ -2,7 +2,6 @@ package com.tameio.identity;
 
 import com.tameio.TestcontainersConfiguration;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.DefaultApplicationArguments;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -23,14 +22,15 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 @Import(TestcontainersConfiguration.class)
 class DemoDataTest {
 
-    @Autowired
-    MockMvcTester mvc;
+    private final MockMvcTester mvc;
+    private final JdbcTemplate jdbc;
+    private final DemoData demo;
 
-    @Autowired
-    JdbcTemplate jdbc;
-
-    @Autowired
-    DemoData demo;
+    DemoDataTest(MockMvcTester mvc, JdbcTemplate jdbc, DemoData demo) {
+        this.mvc = mvc;
+        this.jdbc = jdbc;
+        this.demo = demo;
+    }
 
     @Test
     void theDemoPeopleCanSignIn() {

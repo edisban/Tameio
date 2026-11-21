@@ -6,7 +6,6 @@ import com.tameio.platform.security.SessionCookies;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
@@ -33,17 +32,18 @@ class StaffApiTest {
     private static final String ADMIN_PASSWORD = "admin-first-password";
     private static final String NEW_PASSWORD = "a long new password 2026";
 
-    @Autowired
-    MockMvcTester mvc;
-
-    @Autowired
-    UserAccountRepository accounts;
-
-    @Autowired
-    PasswordEncoder passwords;
+    private final MockMvcTester mvc;
+    private final UserAccountRepository accounts;
+    private final PasswordEncoder passwords;
 
     private Cookie admin;
     private String adminEmail;
+
+    StaffApiTest(MockMvcTester mvc, UserAccountRepository accounts, PasswordEncoder passwords) {
+        this.mvc = mvc;
+        this.accounts = accounts;
+        this.passwords = passwords;
+    }
 
     @BeforeEach
     void anAdministratorWhoHasChangedTheirPassword() throws Exception {

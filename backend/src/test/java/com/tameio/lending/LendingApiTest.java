@@ -28,6 +28,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import static com.tameio.TestUsers.freshAfm;
+import static com.tameio.Latches.await;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
@@ -349,14 +350,5 @@ class LendingApiTest {
         assertThat(instalments(id, "DUE")).isZero();
         release.countDown();
         otherInstance.get(5, TimeUnit.SECONDS);
-    }
-
-    private static void await(CountDownLatch latch) {
-        try {
-            assertThat(latch.await(5, TimeUnit.SECONDS)).isTrue();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new IllegalStateException(e);
-        }
     }
 }
