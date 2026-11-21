@@ -8,6 +8,11 @@ import { defineConfig, devices } from '@playwright/test'
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
+  // Every test signs up, registers a business and goes through real OCR. Right after the stack starts
+  // (a cold JVM) with a browser per core, the 30 s and 5 s defaults were too tight
+  timeout: 60_000,
+  expect: { timeout: 10_000 },
+  workers: process.env.CI ? 2 : '50%',
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'list',

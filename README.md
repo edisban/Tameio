@@ -13,7 +13,9 @@ A platform for Greek small businesses. It keeps their books, sends their invoice
 
 5. **Check and confirm each document** on its own page: the file beside what was read, each field marked with how sure document AI was, the checks it ran, and the suggested category. The owner corrects what is wrong and confirms; amounts must add up to the cent. Every correction is stored with the model version as training data, and a document that could not be read can be filled in by hand.
 
-Coming next: accounting (books and VAT from confirmed documents), then myDATA and loan applications.
+6. **Books and VAT.** Every confirmed document becomes an entry in the expense book. The accounting page shows the year's spending, input VAT and document count, a chart by month (or a table), totals by category, the VAT of each quarter, and the book itself, filterable by category. The accountant gets it as a CSV file that Greek Excel opens as is.
+
+Coming next: myDATA, then loan applications.
 
 ## Stack
 
@@ -36,6 +38,7 @@ flowchart LR
     subgraph api[Spring Boot · modular monolith]
         identity[identity]
         documents[documents]
+        accounting[accounting]
         platform[platform<br/>security · errors · persistence · storage]
     end
     db[(PostgreSQL<br/>Flyway · outbox)]
@@ -50,12 +53,14 @@ flowchart LR
     documents -- DocumentUploaded, after commit --> mq
     mq -- reading job --> documents
     documents -- POST /v1/read --> ai
+    documents -. DocumentReviewed .-> accounting
 ```
 
-- **Modular monolith.** One deployable, split into business modules (`identity` and `documents` today, then `accounting`, `mydata`, `lending`, …). Spring Modulith tests that a module only uses another module's public API, so a module can later be moved into its own service if it ever needs to be ([ADR 0001](docs/adr/0001-modular-monolith-first.md)).
+- **Modular monolith.** One deployable, split into business modules (`identity`, `documents` and `accounting` today, then `mydata`, `lending`, …). Spring Modulith tests that a module only uses another module's public API, so a module can later be moved into its own service if it ever needs to be ([ADR 0001](docs/adr/0001-modular-monolith-first.md)).
 - **Inside a module:** controller → service → repository. Classes are package-private unless another module needs them. The API never returns JPA entities, only records such as `BusinessView`.
 - **`platform`** holds what every module shares: JWT validation and role mapping, RFC 9457 errors, the audited base entity, ΑΦΜ validation, and a `FileStore` interface over S3.
 - **Events and the outbox.** `documents` publishes `DocumentUploaded` inside the upload's transaction. Spring Modulith stores it in `event_publication` and sends it to RabbitMQ only after commit, so no job is lost and none is sent for a rolled-back upload. `DocumentReader` takes jobs from the queue (at most 4 at once per instance), calls document AI outside any transaction, retries after 5 s and 15 s if it does not answer, and then marks the document failed and dead-letters the job ([ADR 0008](docs/adr/0008-rabbitmq-work-queue-for-document-reading.md)).
+- **Module listeners.** A confirmed document publishes `DocumentReviewed`; `accounting` keeps its expense book with an `@ApplicationModuleListener`, which runs after commit in its own transaction and is retried from the event publication registry if it fails. The two modules share ids, never tables.
 - **Lombok** is limited to constructors, getters and loggers. `@Data`, setters and generated `equals`/`hashCode` are turned off in `lombok.config`, because they cause bugs in JPA entities.
 
 ## Run it locally

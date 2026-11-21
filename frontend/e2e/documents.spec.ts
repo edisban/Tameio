@@ -73,4 +73,12 @@ test('the owner checks what was read, corrects the category and confirms it', as
   await page.getByRole('link', { name: 'Καφέ Δοκιμής' }).click()
   await expect(row.getByText('Ελέγχθηκε')).toBeVisible()
   await expect(row.getByText('Εξοπλισμός')).toBeVisible()
+
+  // The confirmed document is now an expense in the books, in the year it was issued
+  await page.getByRole('tab', { name: 'Λογιστικά' }).click()
+  await page.getByRole('button', { name: 'Προηγούμενη χρονιά' }).click()
+  await page.getByRole('button', { name: 'Επόμενη χρονιά' }).click()
+  const book = page.getByRole('table', { name: 'Βιβλίο εξόδων' })
+  await expect(book.getByRole('row').filter({ hasText: 'Εξοπλισμός' })).toContainText('4,00 €')
+  await expect(page.getByRole('table', { name: 'ΦΠΑ ανά τρίμηνο' }).getByRole('row').filter({ hasText: '4ο' })).toContainText('0,77 €')
 })

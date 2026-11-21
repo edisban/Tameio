@@ -10,6 +10,7 @@ import { RequireSession } from './auth/RequireSession'
 import { sessionKey } from './auth/session'
 import { SignInPage } from './auth/SignInPage'
 import { SignUpPage } from './auth/SignUpPage'
+import { AccountingPage } from './features/accounting/AccountingPage'
 import { BusinessesPage } from './features/businesses/BusinessesPage'
 import { BusinessDocumentsPage } from './features/documents/BusinessDocumentsPage'
 import { DocumentPage } from './features/documents/DocumentPage'
@@ -45,6 +46,7 @@ const router = createBrowserRouter([
       { index: true, element: <Navigate to="/businesses" replace /> },
       { path: 'businesses', element: <BusinessesPage /> },
       { path: 'businesses/:businessId', element: <BusinessDocumentsPage /> },
+      { path: 'businesses/:businessId/accounting', element: <AccountingPage /> },
       { path: 'businesses/:businessId/documents/:documentId', element: <DocumentPage /> },
     ],
   },
