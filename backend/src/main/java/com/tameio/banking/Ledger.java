@@ -56,6 +56,13 @@ class Ledger {
     @Transactional(propagation = Propagation.MANDATORY)
     JournalEntry book(EntryKind kind, String description, String reference, String initiatedBy, Idempotency idempotency,
                       List<Leg> legs) {
+        return book(kind, description, reference, initiatedBy, idempotency, legs, clock.instant());
+    }
+
+    /** As {@link #book}, dated in the past: only for loading a year of demo history. */
+    @Transactional(propagation = Propagation.MANDATORY)
+    JournalEntry book(EntryKind kind, String description, String reference, String initiatedBy, Idempotency idempotency,
+                      List<Leg> legs, Instant bookedAt) {
         if (legs.size() < 2) {
             throw new IllegalArgumentException("An entry needs at least two legs");
         }
@@ -66,7 +73,7 @@ class Ledger {
 
         Map<UUID, BankAccount> locked = lockInOrder(legs.stream().map(Leg::accountId).distinct().toList());
 
-        Instant now = clock.instant();
+        Instant now = bookedAt;
         JournalEntry entry = JournalEntry.of(kind, description, reference, initiatedBy, idempotency, now);
         int position = 0;
         for (Leg leg : legs) {
@@ -96,6 +103,9 @@ class Ledger {
      * since, and the lock is what makes it current.
      */
     private Map<UUID, BankAccount> lockInOrder(List<UUID> ids) {
+        // Refreshing re-reads the row and would drop balance changes this transaction has not written yet,
+        // for example from an earlier entry in the same transaction: write them first
+        entityManager.flush();
         Map<UUID, BankAccount> locked = new HashMap<>();
         for (UUID id : ids.stream().sorted(Comparator.comparing(UUID::toString)).toList()) {
             BankAccount account = entityManager.find(BankAccount.class, id);

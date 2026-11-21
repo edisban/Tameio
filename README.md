@@ -85,9 +85,20 @@ Requirements: Docker only.
 docker compose --profile app up -d --build
 ```
 
-Open http://localhost:5180 and create an account with **Εγγραφή**. For the bank's back office, sign in as
-**admin@tameio.local** with the temporary password **tameio-admin-2026**; you will be asked to choose your own
-(the end-to-end tests set it to e2e-admin-password-2026 when they run first). Everything runs in containers:
+Open http://localhost:5180. The first start loads **demo data** (about 20 seconds): four businesses with a
+year of invented history (takings, rent, suppliers, energy, one big purchase each), their accounts and expense
+books. Every figure is made up and every movement goes through the real ledger, so the books balance.
+
+| Sign in as | Password | Sees |
+| --- | --- | --- |
+| demo@tameio.local | demo-password-2026 | Μαρία: Καφέ Το Στέκι, Αρτοποιία Αιγαίο, Studio Λευκό |
+| nikos@tameio.local | demo-password-2026 | Νίκος: Ταβέρνα Ο Γιάννης (an island taverna, shut in winter) |
+| manager@tameio.local | demo-staff-password-2026 | the back office as a credit manager (approves up to 100.000 €) |
+| analyst@tameio.local | demo-staff-password-2026 | the back office as a credit analyst |
+| admin@tameio.local | tameio-admin-2026 | the back office as administrator; asks for a new password first (the end-to-end tests set it to e2e-admin-password-2026) |
+
+You can also create your own account with **Εγγραφή**. To start again from nothing:
+`docker compose --profile app down -v` removes the data volumes. Everything runs in containers:
 the React app (nginx), the Spring Boot API, document AI (Python), PostgreSQL, RabbitMQ and file storage (SeaweedFS).
 The RabbitMQ management UI is at http://localhost:15672 (tameio / tameio).
 There are no ready-made accounts or sample data.
@@ -149,6 +160,7 @@ The backend reads its settings from environment variables prefixed `TAMEIO_`. Th
 | `TAMEIO_RABBITMQ_PASSWORD` | `tameio` |
 | `TAMEIO_DOCUMENT_AI_URL` | `http://localhost:8090` |
 | `TAMEIO_DEMO_DEPOSITS` | `true` (production: off): businesses can add demo money to their accounts |
+| `TAMEIO_DEMO_DATA` | `false` (compose: `true`): load the demo people, businesses and year of history at first start |
 | `TAMEIO_BOOTSTRAP_ADMIN_EMAIL` | none: the first administrator, created only while there is none |
 | `TAMEIO_BOOTSTRAP_ADMIN_PASSWORD` | none: their temporary password |
 

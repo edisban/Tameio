@@ -89,6 +89,9 @@ tameio:
   clearing:
     # How long the simulated clearing house takes to settle or reject a SEPA payment
     settlement-delay: 3s
+  demo:
+    # Local stacks only: demo people, businesses and a year of accounts and expenses (see README)
+    enabled: ${TAMEIO_DEMO_DATA:false}
   bootstrap:
     # The first administrator, created only while the bank has none; the password must be changed at first sign-in
     admin-email: ${TAMEIO_BOOTSTRAP_ADMIN_EMAIL:}

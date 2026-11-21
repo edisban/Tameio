@@ -289,6 +289,32 @@ class BankingApiTest {
         assertThatThrownBy(() -> jdbc.update("delete from journal_entry")).rootCause().hasMessageContaining("journal_entry is append-only");
     }
 
+    @Autowired
+    Ledger ledger;
+
+    @Test
+    void severalEntriesInOneTransactionEachSeeTheBalanceTheOneBeforeLeft() throws Exception {
+        Account account = open(alpha);
+        var settlement = ledger.internal(InternalAccount.SETTLEMENT);
+
+        transaction.executeWithoutResult(status -> {
+            for (int i = 0; i < 3; i++) {
+                ledger.book(EntryKind.INCOMING_PAYMENT, "in", null, "test", null, List.of(
+                    new Ledger.Leg(settlement, new BigDecimal("-10.00"), null, null),
+                    new Ledger.Leg(account.id(), new BigDecimal("10.00"), null, null)));
+            }
+            // Only possible if the three credits above all counted
+            ledger.book(EntryKind.TRANSFER, "out", null, "test", null, List.of(
+                new Ledger.Leg(account.id(), new BigDecimal("-30.00"), null, null),
+                new Ledger.Leg(settlement, new BigDecimal("30.00"), null, null)));
+        });
+
+        assertThat(balance(account)).isEqualByComparingTo("0.00");
+        assertThat(jdbc.queryForList("select balance_after from posting where account_id = ? order by booked_at, id", BigDecimal.class, account.id()))
+            .usingElementComparator(BigDecimal::compareTo)
+            .containsExactly(new BigDecimal("10"), new BigDecimal("20"), new BigDecimal("30"), new BigDecimal("0"));
+    }
+
     @Test
     void theTrialBalanceAlwaysSumsToZero() throws Exception {
         Account account = open(alpha);
