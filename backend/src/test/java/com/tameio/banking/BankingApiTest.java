@@ -37,8 +37,8 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 
 /**
- * Accounts and the ledger against a real PostgreSQL: balances, statements, idempotency, concurrency,
- * and the database's own refusal to store unbalanced or altered entries.
+ * Accounts and the ledger against a real PostgreSQL: balances, statements, concurrency, and the
+ * database's own refusal to store unbalanced or altered entries.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -56,6 +56,9 @@ class BankingApiTest {
 
     @Autowired
     TransactionTemplate transaction;
+
+    @Autowired
+    Ledger ledger;
 
     /** A business owner whose id the test knows, so it can also call the service directly. */
     private record Owner(CurrentUser user, RequestPostProcessor auth, UUID businessId) {
@@ -102,12 +105,12 @@ class BankingApiTest {
         assertThat(deposited).hasStatus(HttpStatus.CREATED);
     }
 
-    private MvcTestResult transfer(Account from, String toIban, String amount, String key) {
-        var request = mvc.post().uri("/api/v1/businesses/{b}/accounts/{a}/transfers", from.owner().businessId(), from.id())
-            .with(from.owner().auth()).with(csrf()).contentType(MediaType.APPLICATION_JSON)
-            .content("""
-                {"creditorIban": "%s", "creditorName": "Βήτα Αρτοποιία", "amount": %s, "reference": "Τιμολόγιο 42"}""".formatted(toIban, amount));
-        return key == null ? request.exchange() : request.header("Idempotency-Key", key).exchange();
+    /** Moves money between two customer accounts through the ledger, as a payment feature would. */
+    private void move(Account from, Account to, String amount) {
+        BigDecimal value = new BigDecimal(amount);
+        transaction.executeWithoutResult(status -> ledger.book(EntryKind.TRANSFER, "test", null, "test", null, List.of(
+            new Ledger.Leg(from.id(), value.negate(), "to", to.iban()),
+            new Ledger.Leg(to.id(), value, "from", from.iban()))));
     }
 
     private BigDecimal balance(Account account) {
@@ -122,7 +125,8 @@ class BankingApiTest {
     void opensAnAccountWithAValidGreekIbanOfTameio() throws Exception {
         Account account = open(alpha);
 
-        assertThat(Iban.isValid(account.iban())).isTrue();
+        // Recomputing the check digits from the rest gives the same IBAN
+        assertThat(Iban.of("GR", account.iban().substring(4))).isEqualTo(account.iban());
         assertThat(account.iban()).hasSize(27).startsWith("GR").satisfies(iban -> assertThat(iban.substring(4, 11)).isEqualTo("9990001"));
         assertThat(balance(account)).isEqualByComparingTo("0");
         MvcTestResult list = mvc.get().uri("/api/v1/businesses/{b}/accounts", alpha.businessId()).with(alpha.auth()).exchange();
@@ -131,65 +135,32 @@ class BankingApiTest {
     }
 
     @Test
-    void movesMoneyBetweenBusinessesAndBothStatementsShowIt() throws Exception {
-        Account from = open(alpha);
-        Account to = open(beta);
-        deposit(from, "500.00");
+    void aDepositShowsInTheStatementWithTheBalanceAfterIt() throws Exception {
+        Account account = open(alpha);
+        deposit(account, "500.00");
+        deposit(account, "23.45");
 
-        MvcTestResult paid = transfer(from, Iban.format(to.iban()), "123.45", UUID.randomUUID().toString());
-
-        assertThat(paid).hasStatus(HttpStatus.CREATED);
-        assertThat(paid).bodyJson().extractingPath("$.status").isEqualTo("COMPLETED");
-        assertThat(paid).bodyJson().extractingPath("$.balanceAfter").isEqualTo(376.55);
-        assertThat(balance(from)).isEqualByComparingTo("376.55");
-        assertThat(balance(to)).isEqualByComparingTo("123.45");
-
-        MvcTestResult received = mvc.get().uri("/api/v1/businesses/{b}/accounts/{a}/transactions", beta.businessId(), to.id())
-            .with(beta.auth()).exchange();
-        assertThat(received).bodyJson().extractingPath("$.content[0].amount").isEqualTo(123.45);
-        assertThat(received).bodyJson().extractingPath("$.content[0].counterpartyName").isEqualTo("Αλφα Καφέ");
-        assertThat(received).bodyJson().extractingPath("$.content[0].reference").isEqualTo("Τιμολόγιο 42");
-        MvcTestResult sent = mvc.get().uri("/api/v1/businesses/{b}/accounts/{a}/transactions", alpha.businessId(), from.id())
+        MvcTestResult statement = mvc.get().uri("/api/v1/businesses/{b}/accounts/{a}/transactions", alpha.businessId(), account.id())
             .with(alpha.auth()).exchange();
-        assertThat(sent).bodyJson().extractingPath("$.content[0].amount").isEqualTo(-123.45);
-        assertThat(sent).bodyJson().extractingPath("$.content[1].kind").isEqualTo("INCOMING_PAYMENT");
+
+        assertThat(statement).bodyJson().extractingPath("$.content[0].amount").isEqualTo(23.45);
+        assertThat(statement).bodyJson().extractingPath("$.content[0].balanceAfter").isEqualTo(523.45);
+        assertThat(statement).bodyJson().extractingPath("$.content[0].kind").isEqualTo("INCOMING_PAYMENT");
+        assertThat(statement).bodyJson().extractingPath("$.content[1].balanceAfter").isEqualTo(500.00);
+        assertThat(balance(account)).isEqualByComparingTo("523.45");
         assertThat(ledgerTotal()).isEqualByComparingTo("0");
     }
 
     @Test
-    void aRetryWithTheSameKeyPaysOnceAndADifferentRequestWithItIsRefused() throws Exception {
-        Account from = open(alpha);
-        Account to = open(beta);
-        deposit(from, "100.00");
-        String key = UUID.randomUUID().toString();
-
-        MvcTestResult first = transfer(from, to.iban(), "40.00", key);
-        MvcTestResult retry = transfer(from, to.iban(), "40.00", key);
-
-        assertThat(first).hasStatus(HttpStatus.CREATED);
-        assertThat(retry).hasStatusOk();
-        assertThat(retry).hasHeader("Idempotent-Replayed", "true");
-        assertThat(retry).bodyJson().extractingPath("$.id").isEqualTo(JsonPath.read(first.getResponse().getContentAsString(), "$.id"));
-        assertThat(balance(from)).isEqualByComparingTo("60.00");
-
-        assertThat(transfer(from, to.iban(), "41.00", key)).hasStatus(HttpStatus.UNPROCESSABLE_CONTENT);
-        assertThat(transfer(from, to.iban(), "1.00", null)).hasStatus(HttpStatus.BAD_REQUEST);
-        assertThat(balance(from)).isEqualByComparingTo("60.00");
-    }
-
-    @Test
-    void refusesWhatCannotBePaid() throws Exception {
+    void theLedgerRefusesToOverdrawACustomerAccount() throws Exception {
         Account from = open(alpha);
         Account to = open(beta);
         deposit(from, "10.00");
 
-        assertThat(transfer(from, to.iban(), "10.01", UUID.randomUUID().toString())).hasStatus(HttpStatus.UNPROCESSABLE_CONTENT);
-        assertThat(transfer(from, Iban.of("GR", "9990001" + "0000009999999999"), "1.00", UUID.randomUUID().toString()))
-            .as("no such account here").hasStatus(HttpStatus.UNPROCESSABLE_CONTENT);
-        assertThat(transfer(from, "GR1601101250000000012300696", "1.00", UUID.randomUUID().toString()))
-            .as("wrong check digits").hasStatus(HttpStatus.BAD_REQUEST);
-        assertThat(transfer(from, from.iban(), "1.00", UUID.randomUUID().toString())).hasStatus(HttpStatus.BAD_REQUEST);
+        assertThatThrownBy(() -> move(from, to, "10.01")).isInstanceOf(UnprocessableException.class);
+
         assertThat(balance(from)).isEqualByComparingTo("10.00");
+        assertThat(balance(to)).isEqualByComparingTo("0.00");
     }
 
     @Test
@@ -197,53 +168,48 @@ class BankingApiTest {
         Account account = open(alpha);
         deposit(account, "50.00");
 
-        MvcTestResult stolen = mvc.post().uri("/api/v1/businesses/{b}/accounts/{a}/transfers", beta.businessId(), account.id())
-            .with(beta.auth()).with(csrf()).header("Idempotency-Key", "x").contentType(MediaType.APPLICATION_JSON)
-            .content("""
-                {"creditorIban": "%s", "creditorName": "x", "amount": 1}""".formatted(open(beta).iban()))
-            .exchange();
-
-        assertThat(stolen).hasStatus(HttpStatus.NOT_FOUND);
         assertThat(mvc.get().uri("/api/v1/businesses/{b}/accounts/{a}/transactions", alpha.businessId(), account.id())
             .with(beta.auth()).exchange()).hasStatus(HttpStatus.NOT_FOUND);
+        assertThat(mvc.post().uri("/api/v1/businesses/{b}/accounts/{a}/demo-deposits", beta.businessId(), account.id())
+            .with(beta.auth()).with(csrf()).contentType(MediaType.APPLICATION_JSON).content("""
+                {"amount": 1}""").exchange()).hasStatus(HttpStatus.NOT_FOUND);
         assertThat(balance(account)).isEqualByComparingTo("50.00");
     }
 
     @Test
-    void aFrozenAccountNeitherPaysNorReceivesAndOnlyManagersFreeze() throws Exception {
-        Account from = open(alpha);
-        Account to = open(beta);
-        deposit(from, "20.00");
+    void aFrozenAccountTakesNoMoneyAndOnlyManagersFreeze() throws Exception {
+        Account account = open(alpha);
         String freeze = """
             {"reason": "Έλεγχος AML"}""";
 
-        assertThat(mvc.post().uri("/api/v1/bank/accounts/{a}/freeze", to.id()).with(user("ANALYST")).with(csrf())
+        assertThat(mvc.post().uri("/api/v1/bank/accounts/{a}/freeze", account.id()).with(user("ANALYST")).with(csrf())
             .contentType(MediaType.APPLICATION_JSON).content(freeze).exchange()).hasStatus(HttpStatus.FORBIDDEN);
-        MvcTestResult frozen = mvc.post().uri("/api/v1/bank/accounts/{a}/freeze", to.id()).with(user("MANAGER")).with(csrf())
+        MvcTestResult frozen = mvc.post().uri("/api/v1/bank/accounts/{a}/freeze", account.id()).with(user("MANAGER")).with(csrf())
             .contentType(MediaType.APPLICATION_JSON).content(freeze).exchange();
         assertThat(frozen).bodyJson().extractingPath("$.status").isEqualTo("FROZEN");
 
-        assertThat(transfer(from, to.iban(), "5.00", UUID.randomUUID().toString())).hasStatus(HttpStatus.UNPROCESSABLE_CONTENT);
+        assertThat(mvc.post().uri("/api/v1/businesses/{b}/accounts/{a}/demo-deposits", alpha.businessId(), account.id())
+            .with(alpha.auth()).with(csrf()).contentType(MediaType.APPLICATION_JSON).content("""
+                {"amount": 5}""").exchange()).hasStatus(HttpStatus.UNPROCESSABLE_CONTENT);
 
-        mvc.post().uri("/api/v1/bank/accounts/{a}/unfreeze", to.id()).with(user("MANAGER")).with(csrf()).exchange();
-        assertThat(transfer(from, to.iban(), "5.00", UUID.randomUUID().toString())).hasStatus(HttpStatus.CREATED);
+        mvc.post().uri("/api/v1/bank/accounts/{a}/unfreeze", account.id()).with(user("MANAGER")).with(csrf()).exchange();
+        deposit(account, "5.00");
+        assertThat(balance(account)).isEqualByComparingTo("5.00");
     }
 
     @Test
-    void concurrentTransfersNeverOverdrawAndNeverDeadlock() throws Exception {
+    void concurrentEntriesOnTheSameAccountsNeverOverdrawLoseAnUpdateOrDeadlock() throws Exception {
         Account a = open(alpha);
         Account b = open(beta);
         deposit(a, "100.00");
         deposit(b, "100.00");
-        var request = new BankingViews.TransferRequest(b.iban(), "Βήτα Αρτοποιία", new BigDecimal("10.00"), null, null);
-        var back = new BankingViews.TransferRequest(a.iban(), "Αλφα Καφέ", new BigDecimal("10.00"), null, null);
 
         List<Callable<Boolean>> work = new ArrayList<>();
         for (int i = 0; i < 15; i++) {
             // A pays B fifteen times (only ten can succeed at first) while B pays A ten times
-            work.add(() -> attempt(() -> banking.transfer(alpha.user(), alpha.businessId(), a.id(), UUID.randomUUID().toString(), request)));
+            work.add(() -> attempt(() -> move(a, b, "10.00")));
             if (i < 10) {
-                work.add(() -> attempt(() -> banking.transfer(beta.user(), beta.businessId(), b.id(), UUID.randomUUID().toString(), back)));
+                work.add(() -> attempt(() -> move(b, a, "10.00")));
             }
         }
         ExecutorService pool = Executors.newFixedThreadPool(8);
@@ -255,17 +221,24 @@ class BankingApiTest {
 
         // Money is conserved whatever the order, and neither account ever went below zero
         assertThat(balance(a).add(balance(b))).isEqualByComparingTo("200.00");
-        assertThat(balance(a)).isNotNegative();
-        assertThat(balance(b)).isNotNegative();
         assertThat(succeeded).isBetween(20L, 25L);
         assertThat(ledgerTotal()).isEqualByComparingTo("0");
-        Long negative = jdbc.queryForObject("select count(*) from posting where account_id in (?, ?) and balance_after < 0", Long.class, a.id(), b.id());
-        assertThat(negative).isZero();
+        // No lost update: each posting's balance is the one before it plus its amount
+        for (Account account : List.of(a, b)) {
+            List<BigDecimal[]> chain = jdbc.query("select amount, balance_after from posting where account_id = ? order by booked_at, id",
+                (rs, n) -> new BigDecimal[] {rs.getBigDecimal(1), rs.getBigDecimal(2)}, account.id());
+            BigDecimal running = BigDecimal.ZERO;
+            for (BigDecimal[] posting : chain) {
+                running = running.add(posting[0]);
+                assertThat(posting[1]).isEqualByComparingTo(running).isNotNegative();
+            }
+            assertThat(running).isEqualByComparingTo(balance(account));
+        }
     }
 
-    private static boolean attempt(Runnable transfer) {
+    private static boolean attempt(Runnable movement) {
         try {
-            transfer.run();
+            movement.run();
             return true;
         } catch (UnprocessableException e) {
             return false;
@@ -288,9 +261,6 @@ class BankingApiTest {
             .rootCause().hasMessageContaining("posting is append-only");
         assertThatThrownBy(() -> jdbc.update("delete from journal_entry")).rootCause().hasMessageContaining("journal_entry is append-only");
     }
-
-    @Autowired
-    Ledger ledger;
 
     @Test
     void severalEntriesInOneTransactionEachSeeTheBalanceTheOneBeforeLeft() throws Exception {

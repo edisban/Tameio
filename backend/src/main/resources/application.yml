@@ -36,9 +36,6 @@ spring:
     password: ${TAMEIO_RABBITMQ_PASSWORD:tameio}
     # The outbox marks an event as sent only once RabbitMQ has confirmed it
     publisher-confirm-type: correlated
-    template:
-      # Verification of Payee asks the clearing house and waits at most this long for the answer
-      reply-timeout: 2s
     listener:
       simple:
         # At most this many documents are read at once per instance, however many are uploaded:
@@ -86,9 +83,6 @@ tameio:
     # Lets a business add demo money to its account on a local stack; production turns it off
     demo-deposits: ${TAMEIO_DEMO_DEPOSITS:true}
     max-accounts: 5
-  clearing:
-    # How long the simulated clearing house takes to settle or reject a SEPA payment
-    settlement-delay: 3s
   demo:
     # Local stacks only: demo people, businesses and a year of accounts and expenses (see README)
     enabled: ${TAMEIO_DEMO_DATA:false}

@@ -59,7 +59,7 @@ class DemoYearTest {
     @Test
     void suppliersHaveValidAfmsAndIbans() {
         for (DemoYear.Movement m : DemoYear.plan(DemoYear.Profile.BAKERY, END, 1).movements()) {
-            assertThat(Iban.isValid(m.counterpartyIban())).isTrue();
+            assertThat(Iban.of("GR", m.counterpartyIban().substring(4))).isEqualTo(m.counterpartyIban());
             if (m.counterpartyAfm() != null) {
                 assertThat(AfmValidator.isValid(m.counterpartyAfm())).as(m.counterparty()).isTrue();
             }

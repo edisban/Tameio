@@ -4,8 +4,6 @@ import com.tameio.banking.BankingViews.AccountView;
 import com.tameio.banking.BankingViews.DemoDeposit;
 import com.tameio.banking.BankingViews.OpenAccount;
 import com.tameio.banking.BankingViews.TransactionView;
-import com.tameio.banking.BankingViews.TransferRequest;
-import com.tameio.banking.BankingViews.PaymentView;
 import com.tameio.platform.security.CurrentUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -13,10 +11,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -24,7 +20,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
@@ -59,25 +54,6 @@ class BankingController {
     Page<TransactionView> statement(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID businessId, @PathVariable UUID accountId,
                                     @PageableDefault(size = 25) Pageable pageable) {
         return service.statement(CurrentUser.from(jwt), businessId, accountId, pageable);
-    }
-
-    @Operation(summary = "Pay another account. Send an Idempotency-Key so a retry never pays twice")
-    @PostMapping("/{accountId}/transfers")
-    ResponseEntity<PaymentView> transfer(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID businessId, @PathVariable UUID accountId,
-                                          @RequestHeader(name = "Idempotency-Key", required = false) String idempotencyKey,
-                                          @Valid @RequestBody TransferRequest request) {
-        BankingService.Transfer transfer = service.transfer(CurrentUser.from(jwt), businessId, accountId, idempotencyKey, request);
-        // A replay answers like the original request did, and says so
-        return transfer.replayed()
-            ? ResponseEntity.ok().header("Idempotent-Replayed", "true").body(transfer.view())
-            : ResponseEntity.status(HttpStatus.CREATED).body(transfer.view());
-    }
-
-    @Operation(summary = "The account's payments, newest first, with their clearing status")
-    @GetMapping("/{accountId}/payments")
-    Page<PaymentView> payments(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID businessId, @PathVariable UUID accountId,
-                               @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
-        return service.payments(CurrentUser.from(jwt), businessId, accountId, pageable);
     }
 
     @Operation(summary = "Local stacks only: receive a demo payment from a customer")

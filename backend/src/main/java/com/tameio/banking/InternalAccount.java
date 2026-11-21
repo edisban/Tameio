@@ -4,9 +4,9 @@ package com.tameio.banking;
 enum InternalAccount {
     /** The bank's account at the Bank of Greece: money entering or leaving the bank as a whole. */
     SETTLEMENT,
-    /** Customer payments to other banks, on their way through SEPA clearing. */
+    /** Payments on their way through SEPA clearing; unused since payments were withdrawn (ADR 0010). */
     SEPA_OUT,
-    /** Payments from other banks, received but not yet credited. */
+    /** Unused since payments were withdrawn (ADR 0010). */
     SEPA_IN,
     /** What customers owe the bank on their loans. */
     LOANS,
