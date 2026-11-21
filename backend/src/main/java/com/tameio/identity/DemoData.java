@@ -30,12 +30,26 @@ import java.util.List;
 @ConditionalOnProperty(name = "tameio.demo.enabled", havingValue = "true")
 class DemoData implements ApplicationRunner {
 
-    static final String OWNER_EMAIL = "demo@tameio.local";
-    static final String SECOND_OWNER_EMAIL = "lucas@tameio.local";
-    static final String BUSINESS_PASSWORD = "demo-password-2026";
-    static final String STAFF_PASSWORD = "demo-staff-password-2026";
+    /** One owner per business; each password is the first name and 123, easy to type in a demo. */
+    static final List<DemoOwner> OWNERS = List.of(
+        new DemoOwner("jack@tameio.local", "jack123", "Jack Harbour", new DemoBusiness("Jack's Café", DemoYear.Profile.CAFE, 11)),
+        new DemoOwner("lola@tameio.local", "lola123", "Lola Crumb", new DemoBusiness("Lola's Bakery", DemoYear.Profile.BAKERY, 23)),
+        new DemoOwner("max@tameio.local", "max123", "Max Pixel", new DemoBusiness("Pixel Studio", DemoYear.Profile.STUDIO, 37)),
+        // An island pub that shuts in winter
+        new DemoOwner("jim@tameio.local", "jim123", "Jim Merriman", new DemoBusiness("The Grinning Fox Pub", DemoYear.Profile.TAVERNA, 41)));
+    static final List<DemoStaff> STAFF = List.of(
+        new DemoStaff("analyst@tameio.local", "analyst123", "Sofia Rossi", UserRole.ANALYST, null),
+        new DemoStaff("manager@tameio.local", "manager123", "Daniel Novak", UserRole.MANAGER, new BigDecimal("100000.00")),
+        // The administrator sees and manages everything in the back office, and may approve any loan
+        new DemoStaff("admin@tameio.local", "admin123", "Olivia Grant", UserRole.ADMIN, new BigDecimal("1000000.00")));
 
-    private record DemoBusiness(String name, DemoYear.Profile profile, long seed) {
+    record DemoBusiness(String name, DemoYear.Profile profile, long seed) {
+    }
+
+    record DemoOwner(String email, String password, String name, DemoBusiness business) {
+    }
+
+    record DemoStaff(String email, String password, String name, UserRole role, BigDecimal approvalLimit) {
     }
 
     private final UserAccountRepository accounts;
@@ -59,7 +73,7 @@ class DemoData implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
-        if (accounts.existsByEmail(OWNER_EMAIL)) {
+        if (accounts.existsByEmail(OWNERS.getFirst().email())) {
             log.info("Demo data is already there");
             return;
         }
@@ -70,27 +84,18 @@ class DemoData implements ApplicationRunner {
 
     private void seed() {
         LocalDate end = LocalDate.now(clock.withZone(ZoneId.of("Europe/Athens")));
-        String businessHash = passwords.encode(BUSINESS_PASSWORD);
-        String staffHash = passwords.encode(STAFF_PASSWORD);
-
-        UserAccount emma = accounts.save(UserAccount.create(OWNER_EMAIL, businessHash, "Emma Collins", UserRole.BUSINESS));
-        UserAccount lucas = accounts.save(UserAccount.create(SECOND_OWNER_EMAIL, businessHash, "Lucas Meyer", UserRole.BUSINESS));
-        var bankers = new DemoBusinessReady.Bankers(
-            staff("analyst@tameio.local", "Sofia Rossi", UserRole.ANALYST, null, staffHash),
-            staff("manager@tameio.local", "Daniel Novak", UserRole.MANAGER, new BigDecimal("100000.00"), staffHash),
-            // The administrator sees and manages everything in the back office, and may approve any loan
-            staff("admin@tameio.local", "Olivia Grant", UserRole.ADMIN, new BigDecimal("1000000.00"), staffHash));
-
-        create(emma, List.of(
-            new DemoBusiness("Καφέ Το Στέκι", DemoYear.Profile.CAFE, 11),
-            new DemoBusiness("Αρτοποιία Αιγαίο", DemoYear.Profile.BAKERY, 23),
-            new DemoBusiness("Studio Λευκό", DemoYear.Profile.STUDIO, 37)), end, bankers);
-        create(lucas, List.of(new DemoBusiness("Ταβέρνα Ο Γιάννης", DemoYear.Profile.TAVERNA, 41)), end, bankers);
+        var bankers = new DemoBusinessReady.Bankers(staff(STAFF.get(0)), staff(STAFF.get(1)), staff(STAFF.get(2)));
+        for (DemoOwner demo : OWNERS) {
+            UserAccount owner = accounts.save(
+                UserAccount.create(demo.email(), passwords.encode(demo.password()), demo.name(), UserRole.BUSINESS));
+            create(owner, demo.business(), end, bankers);
+        }
     }
 
-    private DemoBusinessReady.Banker staff(String email, String name, UserRole role, BigDecimal limit, String hash) {
-        UserAccount account = accounts.findByEmail(email).orElseGet(() -> {
-            UserAccount created = UserAccount.staff(email, hash, name, role, limit);
+    private DemoBusinessReady.Banker staff(DemoStaff demo) {
+        UserAccount account = accounts.findByEmail(demo.email()).orElseGet(() -> {
+            String hash = passwords.encode(demo.password());
+            UserAccount created = UserAccount.staff(demo.email(), hash, demo.name(), demo.role(), demo.approvalLimit());
             // A demo account is ready to use: its password is printed in the README, not handed over
             created.changePassword(hash);
             return accounts.save(created);
@@ -98,16 +103,14 @@ class DemoData implements ApplicationRunner {
         return new DemoBusinessReady.Banker(account.getId().toString(), account.getFullName());
     }
 
-    private void create(UserAccount owner, List<DemoBusiness> list, LocalDate end, DemoBusinessReady.Bankers bankers) {
-        for (DemoBusiness demo : list) {
-            String afm = DemoYear.afm("demo business " + demo.name());
-            if (businesses.existsByAfm(afm)) {
-                continue;
-            }
-            Business business = businesses.save(Business.register(afm, demo.name()));
-            memberships.save(Membership.of(business, owner.getId().toString(), MembershipRole.OWNER));
-            events.publishEvent(new DemoBusinessReady(business.getId(), demo.name(), demo.profile(), end, demo.seed(), bankers));
-            log.info("Demo business {} ({}) ready", demo.name(), demo.profile());
+    private void create(UserAccount owner, DemoBusiness demo, LocalDate end, DemoBusinessReady.Bankers bankers) {
+        String afm = DemoYear.afm("demo business " + demo.name());
+        if (businesses.existsByAfm(afm)) {
+            return;
         }
+        Business business = businesses.save(Business.register(afm, demo.name()));
+        memberships.save(Membership.of(business, owner.getId().toString(), MembershipRole.OWNER));
+        events.publishEvent(new DemoBusinessReady(business.getId(), demo.name(), demo.profile(), end, demo.seed(), bankers));
+        log.info("Demo business {} ({}) ready", demo.name(), demo.profile());
     }
 }

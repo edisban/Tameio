@@ -23,6 +23,16 @@ dev = [
     "httpx==0.28.1",
     "ruff==0.17.3",
 ]
+# The LLM variants of the field-extraction comparison; never in the service image or CI.
+# PyTorch comes separately: Colab has it with CUDA, a laptop takes the CPU build
+# (pip install torch --index-url https://download.pytorch.org/whl/cpu).
+llm = [
+    "transformers==5.23.0",
+    "peft==0.22.0",
+    "trl==1.18.2",
+    "accelerate==1.16.0",
+    "datasets==5.2.0",
+]
 
 [build-system]
 requires = ["setuptools>=75"]
@@ -30,7 +40,7 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["src", "."]
-include = ["document_ai*", "training*"]
+include = ["document_ai*", "training*", "extraction*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

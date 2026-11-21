@@ -42,7 +42,7 @@ export async function registerBusiness(page: Page, name: string): Promise<string
  */
 const ADMIN_EMAIL = 'admin@tameio.local'
 // The demo administrator (compose loads demo data); the others are for stacks set up before it
-const DEMO_ADMIN_PASSWORD = 'demo-staff-password-2026'
+const DEMO_ADMIN_PASSWORD = 'admin123'
 const BOOTSTRAP_PASSWORD = 'tameio-admin-2026'
 const E2E_ADMIN_PASSWORD = 'e2e-admin-password-2026'
 
@@ -84,6 +84,7 @@ export async function signInAsAdmin(page: Page) {
 
 /** A demo analyst or manager; they exist only when the stack loads demo data, as compose does. */
 export async function signInAsDemoStaff(page: Page, who: 'analyst' | 'manager') {
-  await signIn(page, `${who}@tameio.local`, DEMO_ADMIN_PASSWORD)
+  // Each demo banker's password is their role and 123
+  await signIn(page, `${who}@tameio.local`, `${who}123`)
   await expect(page.getByRole('heading', { name: 'Αιτήσεις δανείων' })).toBeVisible()
 }

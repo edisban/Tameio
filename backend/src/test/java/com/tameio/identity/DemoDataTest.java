@@ -12,6 +12,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -33,10 +34,10 @@ class DemoDataTest {
 
     @Test
     void theDemoPeopleCanSignIn() {
-        for (String[] person : new String[][] {
-            {DemoData.OWNER_EMAIL, DemoData.BUSINESS_PASSWORD},
-            {"manager@tameio.local", DemoData.STAFF_PASSWORD},
-            {"analyst@tameio.local", DemoData.STAFF_PASSWORD}}) {
+        var people = new ArrayList<String[]>();
+        DemoData.OWNERS.forEach(owner -> people.add(new String[] {owner.email(), owner.password()}));
+        DemoData.STAFF.forEach(staff -> people.add(new String[] {staff.email(), staff.password()}));
+        for (String[] person : people) {
             var signedIn = mvc.post().uri("/api/v1/auth/sign-in").with(csrf()).contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {"email": "%s", "password": "%s"}""".formatted(person[0], person[1]))
@@ -50,9 +51,8 @@ class DemoDataTest {
     void everyDemoBusinessHasAnAccountWithAYearOfHistoryAndAnExpenseBook() {
         Long businesses = jdbc.queryForObject("""
             select count(*) from business b join membership m on m.business_id = b.id
-            join user_account u on u.id::text = m.user_id where u.email in (?, ?)""", Long.class,
-            DemoData.OWNER_EMAIL, DemoData.SECOND_OWNER_EMAIL);
-        assertThat(businesses).isEqualTo(4);
+            join user_account u on u.id::text = m.user_id where u.email like '%@tameio.local'""", Long.class);
+        assertThat(businesses).isEqualTo(DemoData.OWNERS.size());
 
         var accounts = jdbc.queryForList("select id, balance from bank_account where kind = 'CUSTOMER' and created_by = 'system'");
         assertThat(accounts).hasSizeGreaterThanOrEqualTo(4);
