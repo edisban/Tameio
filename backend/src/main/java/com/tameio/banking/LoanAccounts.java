@@ -70,7 +70,7 @@ public class LoanAccounts {
     public UUID disburse(UUID businessId, UUID accountId, BigDecimal amount, String reference, String initiatedBy) {
         BankAccount account = owned(businessId, accountId);
         BigDecimal value = amount.setScale(2, RoundingMode.UNNECESSARY);
-        return ledger.book(EntryKind.LOAN_DISBURSEMENT, "Loan disbursement", reference, initiatedBy, null, List.of(
+        return ledger.book(EntryKind.LOAN_DISBURSEMENT, "Loan disbursement", reference, initiatedBy, List.of(
             new Ledger.Leg(ledger.internal(InternalAccount.LOANS), value.negate(), account.getHolderName(), account.getIban()),
             new Ledger.Leg(account.getId(), value, "Tameio · δάνειο", null))).getId();
     }

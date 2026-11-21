@@ -34,10 +34,6 @@ class Ledger {
     record Leg(UUID accountId, BigDecimal amount, String counterpartyName, String counterpartyIban) {
     }
 
-    /** The client's Idempotency-Key and a hash of what it asked for. */
-    record Idempotency(String key, String requestHash) {
-    }
-
     private final BankAccountRepository accounts;
     private final JournalEntryRepository entries;
     private final EntityManager entityManager;
@@ -45,15 +41,28 @@ class Ledger {
     private final Clock clock;
 
     @Transactional(propagation = Propagation.MANDATORY)
-    JournalEntry book(EntryKind kind, String description, String reference, String initiatedBy, Idempotency idempotency,
-                      List<Leg> legs) {
-        return book(kind, description, reference, initiatedBy, idempotency, legs, null);
+    JournalEntry book(EntryKind kind, String description, String reference, String initiatedBy, List<Leg> legs) {
+        return book(kind, description, reference, initiatedBy, legs, null);
     }
 
     /** As {@link #book}, dated in the past (only for loading a year of demo history); null means now. */
     @Transactional(propagation = Propagation.MANDATORY)
-    JournalEntry book(EntryKind kind, String description, String reference, String initiatedBy, Idempotency idempotency,
-                      List<Leg> legs, Instant bookedAt) {
+    JournalEntry book(EntryKind kind, String description, String reference, String initiatedBy, List<Leg> legs,
+                      Instant bookedAt) {
+        requireBalanced(legs);
+        Map<UUID, BankAccount> locked = lockInOrder(legs.stream().map(Leg::accountId).distinct().toList());
+        // Read after the locks: an entry that waited for one is dated after the entry it waited for
+        Instant now = bookedAt != null ? bookedAt : clock.instant();
+        JournalEntry entry = JournalEntry.of(kind, description, reference, initiatedBy, now);
+        post(entry, legs, locked);
+        entries.save(entry);
+        announce(entry, locked);
+        log.info("Booked {} entry {} moving {} across {} accounts", kind, entry.getId(), moved(legs), locked.size());
+        return entry;
+    }
+
+    /** Two legs or more, each a non-zero amount in cents, adding up to zero: the database checks the same. */
+    private static void requireBalanced(List<Leg> legs) {
         if (legs.size() < 2) {
             throw new IllegalArgumentException("An entry needs at least two legs");
         }
@@ -61,12 +70,10 @@ class Ledger {
         if (total.signum() != 0 || legs.stream().anyMatch(leg -> leg.amount().signum() == 0 || leg.amount().scale() > 2)) {
             throw new IllegalArgumentException("Legs must be non-zero amounts in cents that add up to zero, not " + total);
         }
+    }
 
-        Map<UUID, BankAccount> locked = lockInOrder(legs.stream().map(Leg::accountId).distinct().toList());
-
-        // Read after the locks: an entry that waited for one is dated after the entry it waited for
-        Instant now = bookedAt != null ? bookedAt : clock.instant();
-        JournalEntry entry = JournalEntry.of(kind, description, reference, initiatedBy, idempotency, now);
+    /** Applies each leg to its locked account and records the balance after it. */
+    private static void post(JournalEntry entry, List<Leg> legs, Map<UUID, BankAccount> locked) {
         int position = 0;
         for (Leg leg : legs) {
             BankAccount account = locked.get(leg.accountId());
@@ -74,18 +81,22 @@ class Ledger {
             entry.add(Posting.of(entry, position++, account.getId(), leg.amount(), balanceAfter,
                 leg.counterpartyName(), leg.counterpartyIban()));
         }
-        entries.save(entry);
+    }
 
+    /** Tells other modules about each movement on a customer account; the bank's own accounts stay internal. */
+    private void announce(JournalEntry entry, Map<UUID, BankAccount> locked) {
         for (Posting posting : entry.getPostings()) {
             BankAccount account = locked.get(posting.getAccountId());
             if (account.isCustomer()) {
-                events.publishEvent(new AccountTransactionBooked(account.getId(), account.getBusinessId(), entry.getId(), kind,
-                    posting.getAmount(), posting.getBalanceAfter(), posting.getCounterpartyName(), reference, now));
+                events.publishEvent(new AccountTransactionBooked(account.getId(), account.getBusinessId(), entry.getId(),
+                    entry.getKind(), posting.getAmount(), posting.getBalanceAfter(), posting.getCounterpartyName(),
+                    entry.getReference(), entry.getBookedAt()));
             }
         }
-        log.info("Booked {} entry {} moving {} across {} accounts", kind, entry.getId(),
-            legs.stream().map(Leg::amount).filter(a -> a.signum() > 0).reduce(BigDecimal.ZERO, BigDecimal::add), locked.size());
-        return entry;
+    }
+
+    private static BigDecimal moved(List<Leg> legs) {
+        return legs.stream().map(Leg::amount).filter(amount -> amount.signum() > 0).reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     /**

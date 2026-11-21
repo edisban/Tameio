@@ -42,7 +42,7 @@ class DemoBanking {
         List<DemoYear.Movement> year = plan.movements();
         LocalDate opening = demo.end().minusMonths(12);
         BigDecimal capital = plan.openingCapital();
-        ledger.book(EntryKind.INCOMING_PAYMENT, "Opening capital", "Κεφάλαιο έναρξης", SYSTEM, null, List.of(
+        ledger.book(EntryKind.INCOMING_PAYMENT, "Opening capital", "Κεφάλαιο έναρξης", SYSTEM, List.of(
             new Ledger.Leg(settlement, capital.negate(), demo.name(), iban),
             new Ledger.Leg(account.getId(), capital, "Ιδρυτής", null)), opening.atTime(9, 0).atZone(ATHENS).toInstant());
 
@@ -52,11 +52,11 @@ class DemoBanking {
             var at = m.date().atTime(LocalTime.of(9 + (minute % 9), (minute * 7) % 60)).atZone(ATHENS).toInstant();
             minute++;
             if (m.flow() == DemoYear.Flow.INCOME) {
-                ledger.book(EntryKind.INCOMING_PAYMENT, "Incoming payment from " + m.counterparty(), m.reference(), SYSTEM, null, List.of(
+                ledger.book(EntryKind.INCOMING_PAYMENT, "Incoming payment from " + m.counterparty(), m.reference(), SYSTEM, List.of(
                     new Ledger.Leg(settlement, m.total().negate(), demo.name(), iban),
                     new Ledger.Leg(account.getId(), m.total(), m.counterparty(), m.counterpartyIban())), at);
             } else {
-                ledger.book(EntryKind.OUTGOING_PAYMENT, "Payment to " + m.counterparty(), m.reference(), SYSTEM, null, List.of(
+                ledger.book(EntryKind.OUTGOING_PAYMENT, "Payment to " + m.counterparty(), m.reference(), SYSTEM, List.of(
                     new Ledger.Leg(account.getId(), m.total().negate(), m.counterparty(), m.counterpartyIban()),
                     new Ledger.Leg(settlement, m.total(), demo.name(), iban)), at);
             }

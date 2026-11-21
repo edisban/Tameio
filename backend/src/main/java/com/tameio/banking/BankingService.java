@@ -76,7 +76,7 @@ class BankingService {
         BankAccount account = owned(businessId, accountId);
         String payer = "Πελάτης Demo Α.Ε.";
         String payerIban = "GR9601100400000004012345678";
-        JournalEntry entry = ledger.book(EntryKind.INCOMING_PAYMENT, "Incoming payment from " + payer, "Demo", user.id(), null, List.of(
+        JournalEntry entry = ledger.book(EntryKind.INCOMING_PAYMENT, "Incoming payment from " + payer, "Demo", user.id(), List.of(
             new Ledger.Leg(ledger.internal(InternalAccount.SETTLEMENT), amount.setScale(2).negate(), account.getHolderName(), account.getIban()),
             new Ledger.Leg(account.getId(), amount.setScale(2), payer, payerIban)));
         Posting credit = entry.getPostings().get(1);
