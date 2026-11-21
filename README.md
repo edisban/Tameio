@@ -67,6 +67,30 @@ flowchart LR
 - **The ledger.** Only `Ledger` moves money: it locks the accounts an entry touches in id order, applies each signed leg to its balance and stores the entry with its postings. A deferred constraint trigger refuses any entry whose postings do not add up to zero, and triggers make entries and postings append-only.
 - **Lombok** is limited to constructors, getters and loggers. `@Data`, setters and generated `equals`/`hashCode` are turned off in `lombok.config`, because they cause bugs in JPA entities.
 
+## Field extraction: rules or an LLM?
+
+Does a small LLM read receipts better than the rules the service uses? The same 247 golden receipts,
+from shops none of the models trained on, read three ways: the baseline (regular expressions and TF-IDF),
+`Qwen2.5-0.5B-Instruct` with a prompt and one worked example, and the same model fine-tuned with LoRA.
+
+| Variant | ΑΦΜ | Date | Net | VAT | Total | Category | All 6 | Invalid JSON | Latency p50 | Size | Hardware |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| baseline | 95.1% | 92.7% | 96.8% | 97.6% | 97.2% | 85.4% | 69.2% | 0.0% | 2 ms | 1.2 MB | CPU, 16 threads |
+| prompted | 67.2% | 43.3% | 0.0% | 47.0% | 23.9% | 7.7% | 0.0% | 32.8% | 12,414 ms | 1,976.1 MB | CPU, 8 threads |
+
+The rules win: more accurate on every field, thousands of times faster and smaller, so the LLM is not
+connected to the app. The fine-tuned row comes from a free Colab GPU
+([notebook](ml/document-ai/notebooks/field_extraction_lora.ipynb)); the data, method, limits and when an LLM
+would be worth it are in the [model card](docs/models/field-extraction.md).
+
+```bash
+cd ml/document-ai
+python -m training.dataset                       # rebuild the versioned dataset (it is committed)
+python -m extraction.evaluate --variants baseline # measure; writes results/field-extraction/
+pip install -e ".[llm]" && pip install torch --index-url https://download.pytorch.org/whl/cpu
+python -m extraction.evaluate --variants prompted # about an hour on a laptop CPU
+```
+
 ## Run it locally
 
 ### Just see the app
@@ -125,7 +149,7 @@ Then open http://localhost:5180. Useful links while it runs:
 | --- | --- | --- |
 | Backend unit and API | Domain rules, security, the module structure, every endpoint and the reading pipeline (outbox, queue, retries, dead letters) against real Postgres, RabbitMQ and S3 storage in containers. JaCoCo fails the build below 80% line coverage. | `cd backend && ./mvnw verify` (needs Docker) |
 | Frontend components | Forms, pages and error messages in a simulated browser, with the API faked by MSW | `cd frontend && npm test` (`npm run test:coverage` for coverage) |
-| Document AI | Field extraction rules, real OCR, and a quality gate: the build fails if the classifier's macro F1 on unseen shops drops | `cd ml/document-ai && pytest` |
+| Document AI | Field extraction rules, real OCR, and a quality gate: the build fails if the classifier's macro F1 on unseen shops drops. The field-extraction dataset must rebuild byte for byte, and CI measures the baseline against the committed results (the LLMs need a GPU, so their rows come from the committed file). | `cd ml/document-ai && pytest` |
 | End to end | The real app in Chromium: sign-up, the API, Postgres and storage. Each test creates its own account. | start the stack and the backend, then `cd frontend && npm run e2e` |
 
 CI runs all four on every push; the end-to-end job starts the whole stack with `docker compose --profile app up --wait`.
@@ -160,8 +184,9 @@ The backend reads its settings from environment variables prefixed `TAMEIO_`. Th
 
 ```
 backend/    Spring Boot app, one package per module (platform, identity, documents, ...)
-ml/         Python services; document-ai reads receipts and suggests an expense category
+ml/         Python services; document-ai reads receipts and suggests an expense category,
+            and compares its rules with a prompted and a fine-tuned LLM (extraction/, notebooks/)
 frontend/   React app, one folder per feature
 infra/      Local infrastructure settings (file storage access keys)
-docs/       Design document and architecture decision records
+docs/       Design document, architecture decision records and model cards
 ```

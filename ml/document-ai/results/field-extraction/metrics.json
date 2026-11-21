@@ -22,6 +22,28 @@
       },
       "model_size_mb": 1.2,
       "evaluated_at": "2026-11-21T12:20:02+00:00"
+    },
+    "prompted": {
+      "model": "Qwen/Qwen2.5-0.5B-Instruct",
+      "hardware": "CPU, 8 threads",
+      "documents": 247,
+      "field_accuracy": {
+        "issuer_afm": 0.6721,
+        "issue_date": 0.4332,
+        "net_amount": 0.0,
+        "vat_amount": 0.4696,
+        "total_amount": 0.2389,
+        "category": 0.0769
+      },
+      "all_fields_correct": 0.0,
+      "invalid_json_rate": 0.3279,
+      "latency_ms": {
+        "mean": 12632.8,
+        "p50": 12414.2,
+        "p95": 14115.5
+      },
+      "model_size_mb": 1976.1,
+      "evaluated_at": "2026-11-21T13:25:13+00:00"
     }
   }
 }
