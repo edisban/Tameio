@@ -39,10 +39,12 @@ services:
       - storage-data:/data
       - ./infra/seaweedfs/s3.json:/etc/seaweedfs/s3.json:ro
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8333/healthz"]
+      # Ready means able to store a file, not only answering: /healthz is up in seconds, but the first volume to
+      # write to takes about 15 s more. Asking the master for a file id succeeds only once one is there.
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8333/healthz && wget -q -O /dev/null http://127.0.0.1:9333/dir/assign"]
       interval: 5s
       timeout: 3s
-      retries: 20
+      retries: 30
 
   rabbitmq:
     # Work queues: each upload becomes a reading job, retried with back-off and dead-lettered if it keeps failing.
