@@ -29,6 +29,11 @@ export function useRegisterBusiness() {
   return useMutation({
     mutationFn: (body: RegisterBusiness) =>
       api<Business>('/api/v1/businesses', { method: 'POST', body: JSON.stringify(body) }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: keys.all }),
+    onSuccess: created => {
+      // Shown at once from the answer itself, then confirmed by a fresh read: the list never depends on
+      // the timing of a refetch that may still be racing an earlier one
+      queryClient.setQueryData<Business[]>(keys.all, list => (list ? [...list.filter(b => b.id !== created.id), created] : [created]))
+      return queryClient.invalidateQueries({ queryKey: keys.all })
+    },
   })
 }

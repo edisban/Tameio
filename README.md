@@ -19,7 +19,9 @@ A bank and finance platform for Greek small businesses. They hold their money in
 
 8. **Current accounts and payments.** A business opens accounts with Greek IBANs of Kyma Bank, receives money (a demo deposit on a local stack) and pays other accounts after reviewing the payment. Every movement is a balanced double-entry journal entry: the database refuses unbalanced or altered entries, transfers lock accounts in a fixed order so they never deadlock or overdraw, and an `Idempotency-Key` makes a retried payment pay once. Bank staff search customer accounts, freeze them, and see the trial balance, which is always zero ([ADR 0009](docs/adr/0009-core-banking-double-entry-ledger.md)).
 
-Coming next: SEPA payments to other banks with Verification of Payee, a financial overview, loans with maker-checker approval, a tamper-evident audit log, and portfolio analytics.
+9. **SEPA payments and Verification of Payee.** Payments to other banks go to a simulated SEPA clearing house over RabbitMQ: the money leaves the account at once, then the payment settles or comes back with an ISO 20022 reason code (AC04 closed account, AC01 wrong account), and the page follows it live. Other banks can pay in. Before every payment the payee's name is checked against the account (match, close match with the real name, no match), and a mismatch needs the payer's explicit confirmation ([ADR 0010](docs/adr/0010-sepa-payments-through-a-clearing-house-over-rabbitmq.md)).
+
+Coming next: a financial overview, loans with maker-checker approval, a tamper-evident audit log, and portfolio analytics.
 
 ## Stack
 
@@ -44,6 +46,7 @@ flowchart LR
         documents[documents]
         accounting[accounting]
         banking[banking<br/>double-entry ledger]
+        clearing[clearing<br/>simulated SEPA clearing house]
         platform[platform<br/>security · errors · persistence · storage]
     end
     db[(PostgreSQL<br/>Flyway · outbox)]
@@ -59,6 +62,9 @@ flowchart LR
     mq -- reading job --> documents
     documents -- POST /v1/read --> ai
     documents -. DocumentReviewed .-> accounting
+    banking -- pacs.008, VoP --> mq
+    mq -- pacs.002 reports, incoming --> banking
+    clearing <-- JSON only, no shared types --> mq
 ```
 
 - **Modular monolith.** One deployable, split into business modules (`identity`, `documents`, `accounting` and `banking` today, then `payments`, `lending`, …). Spring Modulith tests that a module only uses another module's public API, so a module can later be moved into its own service if it ever needs to be ([ADR 0001](docs/adr/0001-modular-monolith-first.md)).

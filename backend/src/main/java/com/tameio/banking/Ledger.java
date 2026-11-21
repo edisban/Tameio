@@ -30,8 +30,17 @@ import java.util.UUID;
 @RequiredArgsConstructor
 class Ledger {
 
-    /** One side of an entry: a signed amount on an account, and who is on the other side. */
-    record Leg(UUID accountId, BigDecimal amount, String counterpartyName, String counterpartyIban) {
+    /**
+     * One side of an entry: a signed amount on an account, and who is on the other side.
+     *
+     * @param returnOfFunds the customer's own money coming back from a returned payment, which a frozen
+     *                      account still takes
+     */
+    record Leg(UUID accountId, BigDecimal amount, String counterpartyName, String counterpartyIban, boolean returnOfFunds) {
+
+        Leg(UUID accountId, BigDecimal amount, String counterpartyName, String counterpartyIban) {
+            this(accountId, amount, counterpartyName, counterpartyIban, false);
+        }
     }
 
     /** The client's Idempotency-Key and a hash of what it asked for. */
@@ -62,7 +71,7 @@ class Ledger {
         int position = 0;
         for (Leg leg : legs) {
             BankAccount account = locked.get(leg.accountId());
-            BigDecimal balanceAfter = account.apply(leg.amount());
+            BigDecimal balanceAfter = account.apply(leg.amount(), leg.returnOfFunds());
             entry.add(Posting.of(entry, position++, account.getId(), leg.amount(), balanceAfter,
                 leg.counterpartyName(), leg.counterpartyIban()));
         }

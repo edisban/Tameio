@@ -1,13 +1,29 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
-import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Divider, Stack, TextField, Typography } from '@mui/material'
+import ScheduleRoundedIcon from '@mui/icons-material/ScheduleRounded'
+import {
+  Alert,
+  Box,
+  Button,
+  Checkbox,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Divider,
+  FormControlLabel,
+  MenuItem,
+  Stack,
+  TextField,
+  Typography,
+} from '@mui/material'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { ApiError } from '../../api/http'
 import { parseCents } from '../documents/amounts'
 import { formatMoney } from '../documents/files'
-import { useTransfer, type BankAccount, type TransferResult } from './api'
+import { useDirectory, useTransfer, useVerifyPayee, type BankAccount, type Payment, type PayeeCheck } from './api'
 import { formatIban, isValidIban, normaliseIban } from './iban'
 
 const schema = z.object({
@@ -19,15 +35,58 @@ const schema = z.object({
 
 type Form = z.infer<typeof schema>
 
+const KYMA_BANK_CODE = '999'
+const isKyma = (iban: string) => {
+  const n = normaliseIban(iban)
+  return n.startsWith('GR') && n.slice(4, 7) === KYMA_BANK_CODE
+}
+
 const failure = (error: unknown) =>
   error instanceof ApiError && error.problem.status === 422
     ? (error.problem.detail ?? 'Η πληρωμή δεν μπορεί να γίνει.')
     : 'Η πληρωμή δεν ολοκληρώθηκε. Δοκιμάστε ξανά: δεν θα χρεωθείτε δύο φορές.'
 
+/** What Verification of Payee found, in words; a mismatch asks for an explicit confirmation. */
+function PayeeCheckNotice({ check, typed, onUseName, confirmed, onConfirm }: {
+  check: PayeeCheck | null
+  typed: string
+  onUseName: (name: string) => void
+  confirmed: boolean
+  onConfirm: (value: boolean) => void
+}) {
+  if (!check) return null
+  switch (check.result) {
+    case 'MATCH':
+      return <Alert severity="success">Το όνομα ταιριάζει με τον κάτοχο του λογαριασμού.</Alert>
+    case 'CLOSE_MATCH':
+      return (
+        <Alert
+          severity="warning"
+          action={<Button color="inherit" size="small" onClick={() => onUseName(check.actualName!)}>Χρήση</Button>}
+        >
+          Μοιάζει: ο λογαριασμός ανήκει σε «{check.actualName}», όχι «{typed}».
+        </Alert>
+      )
+    case 'NO_MATCH':
+      return (
+        <Alert severity="error">
+          Το όνομα δεν ταιριάζει με τον κάτοχο του λογαριασμού. Αν πληρώσετε, τα χρήματα μπορεί να πάνε σε λάθος πρόσωπο και να μην επιστραφούν.
+          <FormControlLabel
+            sx={{ display: 'flex', mt: 1 }}
+            control={<Checkbox checked={confirmed} onChange={e => onConfirm(e.target.checked)} />}
+            label="Το κατανοώ και θέλω να πληρώσω"
+          />
+        </Alert>
+      )
+    default:
+      return <Alert severity="info">Η τράπεζα του δικαιούχου δεν επιβεβαίωσε το όνομα. Ελέγξτε το IBAN πριν πληρώσετε.</Alert>
+  }
+}
+
 /**
- * A payment in three steps: details, a review of exactly what will be paid, and the receipt. The
- * Idempotency-Key is made when the review opens and kept for retries, so pressing "Pay" twice, or again
- * after a lost answer, pays once.
+ * A payment in three steps: details, a review with the payee check (Verification of Payee), and the
+ * receipt. The Idempotency-Key is made when the review opens and kept for retries, so pressing "Pay"
+ * twice, or again after a lost answer, pays once.
  */
 export function TransferDialog({ businessId, account, open, onClose }: {
   businessId: string
@@ -36,24 +95,37 @@ export function TransferDialog({ businessId, account, open, onClose }: {
   onClose: () => void
 }) {
   const transfer = useTransfer(businessId, account.id)
+  const verify = useVerifyPayee()
+  const directory = useDirectory()
   const [step, setStep] = useState<'details' | 'review' | 'done'>('details')
   const [key, setKey] = useState('')
-  const [result, setResult] = useState<TransferResult | null>(null)
+  const [check, setCheck] = useState<PayeeCheck | null>(null)
+  const [confirmed, setConfirmed] = useState(false)
+  const [result, setResult] = useState<Payment | null>(null)
   const form = useForm<Form>({ resolver: zodResolver(schema), defaultValues: { creditorIban: '', creditorName: '', amount: '', reference: '' } })
   const { errors } = form.formState
   const values = form.getValues()
   const cents = parseCents(values.amount) ?? 0
+  const sepa = !isKyma(values.creditorIban)
 
   const close = () => {
     form.reset()
     transfer.reset()
     setStep('details')
+    setCheck(null)
+    setConfirmed(false)
     setResult(null)
     onClose()
   }
 
-  const review = form.handleSubmit(() => {
+  const review = form.handleSubmit(async ({ creditorIban, creditorName }) => {
     setKey(crypto.randomUUID())
+    setConfirmed(false)
+    try {
+      setCheck(await verify.mutateAsync({ iban: normaliseIban(creditorIban), name: creditorName.trim() }))
+    } catch {
+      setCheck({ result: 'NOT_POSSIBLE', actualName: null })
+    }
     setStep('review')
   })
 
@@ -65,6 +137,7 @@ export function TransferDialog({ businessId, account, open, onClose }: {
         creditorName: values.creditorName.trim(),
         amount: cents / 100,
         reference: values.reference.trim() || null,
+        confirmedMismatch: check?.result === 'NO_MATCH' ? confirmed : undefined,
       })
       setResult(done)
       setStep('done')
@@ -83,24 +156,42 @@ export function TransferDialog({ businessId, account, open, onClose }: {
               <Typography variant="body2" color="text.secondary">
                 Από: {account.name} · {formatIban(account.iban)} · διαθέσιμα {formatMoney(account.balance)}
               </Typography>
+              {directory.data && directory.data.length > 0 && (
+                <TextField
+                  select
+                  size="small"
+                  label="Δικαιούχοι demo σε άλλες τράπεζες"
+                  value=""
+                  onChange={e => {
+                    const payee = directory.data.find(p => p.iban === e.target.value)
+                    if (!payee) return
+                    form.setValue('creditorIban', formatIban(payee.iban), { shouldValidate: true })
+                    form.setValue('creditorName', payee.holderName, { shouldValidate: true })
+                  }}
+                >
+                  {directory.data.map(p => (
+                    <MenuItem key={p.iban} value={p.iban}>
+                      {p.holderName} · {p.bank}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              )}
               <TextField
                 label="IBAN δικαιούχου"
                 autoFocus
-                {...form.register('creditorIban', {
-                  onChange: e => form.setValue('creditorIban', formatIban(e.target.value)),
-                })}
+                {...form.register('creditorIban', { onChange: e => form.setValue('creditorIban', formatIban(e.target.value)) })}
                 error={!!errors.creditorIban}
-                helperText={errors.creditorIban?.message ?? 'Π.χ. GR16 9990 0010 …'}
-                slotProps={{ htmlInput: { style: { fontFamily: 'monospace' }, maxLength: 42 } }}
+                helperText={errors.creditorIban?.message ?? 'Σε Kyma Bank ή σε άλλη τράπεζα της ζώνης SEPA'}
+                slotProps={{ htmlInput: { style: { fontFamily: 'monospace' }, maxLength: 42 }, inputLabel: { shrink: true } }}
               />
-              <TextField label="Όνομα δικαιούχου" {...form.register('creditorName')} error={!!errors.creditorName} helperText={errors.creditorName?.message} />
               <TextField
-                label="Ποσό (€)"
-                inputMode="decimal"
-                {...form.register('amount')}
-                error={!!errors.amount}
-                helperText={errors.amount?.message}
+                label="Όνομα δικαιούχου"
+                {...form.register('creditorName')}
+                error={!!errors.creditorName}
+                helperText={errors.creditorName?.message ?? 'Όπως είναι στον λογαριασμό: θα το ελέγξουμε'}
+                slotProps={{ inputLabel: { shrink: true } }}
               />
+              <TextField label="Ποσό (€)" inputMode="decimal" {...form.register('amount')} error={!!errors.amount} helperText={errors.amount?.message} />
               <TextField
                 label="Αιτιολογία"
                 {...form.register('reference')}
@@ -111,7 +202,7 @@ export function TransferDialog({ businessId, account, open, onClose }: {
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 2 }}>
             <Button onClick={close}>Άκυρο</Button>
-            <Button type="submit" variant="contained">
+            <Button type="submit" variant="contained" disabled={verify.isPending}>
               Συνέχεια
             </Button>
           </DialogActions>
@@ -122,21 +213,36 @@ export function TransferDialog({ businessId, account, open, onClose }: {
         <>
           <DialogTitle>Επιβεβαίωση πληρωμής</DialogTitle>
           <DialogContent>
-            <Stack spacing={1.5} sx={{ pt: 1 }} aria-label="Σύνοψη πληρωμής">
+            <Stack spacing={1.5} sx={{ pt: 1 }}>
               {transfer.isError && <Alert severity="error">{failure(transfer.error)}</Alert>}
+              <PayeeCheckNotice
+                check={check}
+                typed={values.creditorName.trim()}
+                confirmed={confirmed}
+                onConfirm={setConfirmed}
+                onUseName={name => {
+                  form.setValue('creditorName', name)
+                  setCheck({ result: 'MATCH', actualName: null })
+                }}
+              />
               <Typography sx={{ fontSize: 34, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{formatMoney(cents / 100)}</Typography>
               <Divider />
-              <Row label="Προς" value={values.creditorName} />
+              <Row label="Προς" value={form.getValues('creditorName')} />
               <Row label="IBAN" value={formatIban(values.creditorIban)} mono />
               {values.reference && <Row label="Αιτιολογία" value={values.reference} />}
               <Row label="Από" value={`${account.name} · ${formatIban(account.iban)}`} />
+              <Row label="Τρόπος" value={sepa ? 'SEPA, προς άλλη τράπεζα: εκκαθαρίζεται μέσα στην ημέρα' : 'Μεταφορά στην Kyma Bank: άμεσα'} />
             </Stack>
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 2 }}>
             <Button onClick={() => setStep('details')} disabled={transfer.isPending}>
               Πίσω
             </Button>
-            <Button variant="contained" onClick={() => void pay()} disabled={transfer.isPending}>
+            <Button
+              variant="contained"
+              onClick={() => void pay()}
+              disabled={transfer.isPending || (check?.result === 'NO_MATCH' && !confirmed)}
+            >
               Πληρωμή {formatMoney(cents / 100)}
             </Button>
           </DialogActions>
@@ -146,14 +252,20 @@ export function TransferDialog({ businessId, account, open, onClose }: {
       {step === 'done' && result && (
         <>
           <DialogContent sx={{ textAlign: 'center', pt: 4 }}>
-            <CheckCircleRoundedIcon color="success" sx={{ fontSize: 56 }} />
+            {result.status === 'PENDING' ? (
+              <ScheduleRoundedIcon color="primary" sx={{ fontSize: 56 }} />
+            ) : (
+              <CheckCircleRoundedIcon color="success" sx={{ fontSize: 56 }} />
+            )}
             <Typography variant="h5" component="h2" sx={{ mt: 1 }}>
-              Η πληρωμή ολοκληρώθηκε
+              {result.status === 'PENDING' ? 'Η πληρωμή στάλθηκε' : 'Η πληρωμή ολοκληρώθηκε'}
             </Typography>
             <Typography color="text.secondary" sx={{ mt: 1 }}>
-              {formatMoney(result.amount)} στον/στην {result.creditorName}. Νέο υπόλοιπο {formatMoney(result.balanceAfter)}.
+              {formatMoney(result.amount)} στον/στην {result.counterpartyName}.
+              {result.balanceAfter != null && ` Νέο υπόλοιπο ${formatMoney(result.balanceAfter)}.`}
+              {result.status === 'PENDING' && ' Θα δείτε εδώ πότε εκκαθαρίστηκε από την τράπεζα του δικαιούχου.'}
             </Typography>
-            <Box sx={{ mt: 2, fontFamily: 'monospace', fontSize: 12, color: 'text.secondary' }}>Αναφορά {result.id}</Box>
+            <Box sx={{ mt: 2, fontFamily: 'monospace', fontSize: 12, color: 'text.secondary' }}>Αναφορά {result.endToEndId}</Box>
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 2, justifyContent: 'center' }}>
             <Button variant="contained" onClick={close}>

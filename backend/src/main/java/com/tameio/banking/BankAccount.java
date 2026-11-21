@@ -78,9 +78,13 @@ class BankAccount extends AuditedEntity {
         return kind == Kind.CUSTOMER;
     }
 
-    /** Moves the balance by a signed amount. A customer account may not go below zero or move while frozen. */
-    BigDecimal apply(BigDecimal amount) {
-        if (isCustomer() && status != Status.ACTIVE) {
+    /**
+     * Moves the balance by a signed amount. A customer account may not go below zero or move while frozen,
+     * except to take back its own money from a returned payment.
+     */
+    BigDecimal apply(BigDecimal amount, boolean returnOfFunds) {
+        boolean allowedWhileFrozen = returnOfFunds && amount.signum() > 0 && status == Status.FROZEN;
+        if (isCustomer() && status != Status.ACTIVE && !allowedWhileFrozen) {
             throw new UnprocessableException(status == Status.FROZEN
                 ? "The account " + iban + " is frozen." : "The account " + iban + " is closed.");
         }

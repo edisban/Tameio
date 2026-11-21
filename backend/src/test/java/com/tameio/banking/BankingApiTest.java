@@ -184,8 +184,6 @@ class BankingApiTest {
         deposit(from, "10.00");
 
         assertThat(transfer(from, to.iban(), "10.01", UUID.randomUUID().toString())).hasStatus(HttpStatus.UNPROCESSABLE_CONTENT);
-        assertThat(transfer(from, "GR1601101250000000012300695", "1.00", UUID.randomUUID().toString()))
-            .as("another bank, before SEPA").hasStatus(HttpStatus.UNPROCESSABLE_CONTENT);
         assertThat(transfer(from, Iban.of("GR", "9990001" + "0000009999999999"), "1.00", UUID.randomUUID().toString()))
             .as("no such account here").hasStatus(HttpStatus.UNPROCESSABLE_CONTENT);
         assertThat(transfer(from, "GR1601101250000000012300696", "1.00", UUID.randomUUID().toString()))
@@ -237,8 +235,8 @@ class BankingApiTest {
         Account b = open(beta);
         deposit(a, "100.00");
         deposit(b, "100.00");
-        var request = new BankingViews.TransferRequest(b.iban(), "Βήτα", new BigDecimal("10.00"), null);
-        var back = new BankingViews.TransferRequest(a.iban(), "Αλφα", new BigDecimal("10.00"), null);
+        var request = new BankingViews.TransferRequest(b.iban(), "Βήτα Αρτοποιία", new BigDecimal("10.00"), null, null);
+        var back = new BankingViews.TransferRequest(a.iban(), "Αλφα Καφέ", new BigDecimal("10.00"), null, null);
 
         List<Callable<Boolean>> work = new ArrayList<>();
         for (int i = 0; i < 15; i++) {

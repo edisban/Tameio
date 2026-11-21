@@ -36,7 +36,13 @@ export function useCreateStaff() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (input: CreateStaff) => api<WithTemporaryPassword>(base, { method: 'POST', body: JSON.stringify(input) }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: key }),
+    onSuccess: ({ user }) => {
+      // Shown at once from the answer, then confirmed by a fresh read
+      queryClient.setQueryData<Page<StaffMember>>(key, page =>
+        page ? { ...page, content: [...page.content.filter(m => m.id !== user.id), user] } : page,
+      )
+      return queryClient.invalidateQueries({ queryKey: key })
+    },
   })
 }
 

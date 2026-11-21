@@ -24,6 +24,7 @@ import { BusinessHeader } from '../businesses/BusinessHeader'
 import { parseCents } from '../documents/amounts'
 import { AccountCard } from './AccountCard'
 import { useAccounts, useDemoDeposit, useOpenAccount, useStatement, type BankAccount } from './api'
+import { PaymentsList } from './PaymentsList'
 import { TransactionsList } from './TransactionsList'
 import { TransferDialog } from './TransferDialog'
 
@@ -143,6 +144,8 @@ export function AccountsPage() {
               {selected.status === 'FROZEN' && (
                 <Alert severity="warning">Ο λογαριασμός έχει παγώσει από την τράπεζα. Επικοινωνήστε με το κατάστημα.</Alert>
               )}
+
+              <PaymentsList key={`payments-${selected.id}`} businessId={businessId} accountId={selected.id} />
 
               <Stack spacing={1.5}>
                 <Typography variant="h6" component="h2">
