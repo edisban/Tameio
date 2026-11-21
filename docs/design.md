@@ -50,7 +50,7 @@ Non-goals:
 | Business owner | Business | Open accounts, upload and confirm documents, see the books, apply for loans |
 | Credit analyst | Bank | See customer accounts; review applications and recommend a decision |
 | Credit manager | Bank | Freeze accounts; decide applications up to their approval limit |
-| Administrator | Bank | Everything in the back office: staff, roles, approval limits, the general ledger, the audit log |
+| Administrator | Bank | Everything in the back office: staff, roles, approval limits, the general ledger |
 
 Every business is a separate tenant: its data is never visible to another business.
 
@@ -90,7 +90,6 @@ events, never each other's tables; Spring Modulith checks this in a test.
 | `accounting` | The expense book, totals by month, quarter and category, CSV export | Built |
 | `banking` | Current accounts with IBANs, the double-entry ledger, the trial balance | Built |
 | `lending` | Loan applications, the review workflow, decisions, disbursement | Done |
-| `audit` | An append-only record of who did what | Planned |
 | `platform` | Security, errors, persistence, storage, validation, demo data plan (shared, not a business module) | Built |
 
 ### 5.2 Document AI
@@ -173,7 +172,7 @@ decision ([ADR 0005](adr/0005-human-decides-every-credit-decision.md)).
 | Frontend components | Vitest, Testing Library, MSW |
 | End to end | Playwright against the whole stack |
 | Document AI | pytest with real OCR; the classifier's macro F1 as a quality gate |
-| Load (planned) | k6 |
+| Load | k6 |
 
 ## 11. Known trade-offs
 
@@ -198,15 +197,16 @@ decision ([ADR 0005](adr/0005-human-decides-every-credit-decision.md)).
 | 4 | Bank staff, roles, approval limits, session revocation | Done |
 | 5 | Core banking: accounts, double-entry ledger, trial balance, demo data | Done |
 | 6 | Lending: applications, state machine, maker-checker, explained risk score, disbursement | Done |
-| 7 | Audit log: append-only, filled from domain events, admin search | Next |
-| 8 | Observability and load balancing: Prometheus, Grafana, three instances behind nginx, k6 | Planned |
-| 9 | Field extraction compared: rules, a prompted LLM and a LoRA fine-tune, with a model card | Done |
+| 7 | Field extraction compared: rules, a prompted LLM and a LoRA fine-tune, with a model card | Done |
+| 8 | Observability and load balancing: Prometheus, Grafana, an alert, nginx in front of one or three instances, advisory locks, k6 | Done |
+| 9 | Review of the whole codebase, README for presenting it, a ten-minute demo script | Next |
 
 ## 13. Later ideas
 
 Not planned for now; recorded so the direction is clear.
 
 - Payments: transfers between accounts and SEPA credit transfers to other banks.
+- Audit log: an append-only record of who did what, filled from domain events, with a search for administrators.
 - myDATA (the tax authority's electronic books): fetching, classifying and issuing invoices.
 - Document AI: YOLO fine-tuning for field boxes, LayoutLM or Donut, a Greek BERT classifier, MLflow and
   DVC for experiments and data.

@@ -17,7 +17,7 @@ A small bank for Greek small businesses, with their books built in. A business h
 9. **Loans with maker-checker.** A business applies for a loan (amount, term, purpose); the application is filled in from its account history and expense book, saved as a draft and submitted when ready. In the back office an analyst takes the case, sees a risk score of four explained factors (repayment capacity, track record, cash cushion, loan size; 25 points each) and recommends with a reason. A manager whose approval limit covers the amount decides, and can never be the person who recommended: the service refuses it and so does a database constraint. An approved loan is paid into the account as one ledger entry. The score helps; a person always decides ([ADR 0010](docs/adr/0010-loan-review-state-machine-and-maker-checker.md)).
 10. **Demo data.** A local stack starts with four businesses and a year of invented history in their accounts and expense books, loan applications in every state, plus demo staff (see below).
 
-Coming next: an append-only audit log, then observability and several instances behind a load balancer ([docs/design.md](docs/design.md#12-delivery-plan)).
+Coming next: a review of the whole codebase and a guided ten-minute demo ([docs/design.md](docs/design.md#12-delivery-plan)).
 
 ## Stack
 
@@ -59,7 +59,7 @@ flowchart LR
     documents -. DocumentReviewed .-> accounting
 ```
 
-- **Modular monolith.** One deployable, split into business modules (`identity`, `documents`, `accounting`, `banking` and `lending` today, then `audit`). Spring Modulith tests that a module only uses another module's public API, so a module can later be moved into its own service if it ever needs to be ([ADR 0001](docs/adr/0001-modular-monolith-first.md)).
+- **Modular monolith.** One deployable, split into business modules (`identity`, `documents`, `accounting`, `banking` and `lending`). Spring Modulith tests that a module only uses another module's public API, so a module can later be moved into its own service if it ever needs to be ([ADR 0001](docs/adr/0001-modular-monolith-first.md)).
 - **Inside a module:** controller → service → repository. Classes are package-private unless another module needs them. The API never returns JPA entities, only records such as `BusinessView`.
 - **`platform`** holds what every module shares: JWT validation and role mapping, RFC 9457 errors, the audited base entity, ΑΦΜ validation, and a `FileStore` interface over S3.
 - **Events and the outbox.** `documents` publishes `DocumentUploaded` inside the upload's transaction. Spring Modulith stores it in `event_publication` and sends it to RabbitMQ only after commit, so no job is lost and none is sent for a rolled-back upload. `DocumentReader` takes jobs from the queue (at most 4 at once per instance), calls document AI outside any transaction, retries after 5 s and 15 s if it does not answer, and then marks the document failed and dead-letters the job ([ADR 0008](docs/adr/0008-rabbitmq-work-queue-for-document-reading.md)).
@@ -91,6 +91,46 @@ pip install -e ".[llm]" && pip install torch --index-url https://download.pytorc
 python -m extraction.evaluate --variants prompted # about an hour on a laptop CPU
 ```
 
+## Several instances
+
+By default one backend runs behind nginx. For a demo with three:
+
+```bash
+docker compose --profile app up -d --scale backend=3   # and back with --scale backend=1
+```
+
+nginx asks Docker's DNS for the replicas every 10 s and sends requests to them in turn; Prometheus finds them
+the same way and scrapes each one. The Grafana dashboard (http://localhost:3000) shows requests, latency and
+memory per replica, whether one runs or three, next to the reading queue and the bank's figures: documents by
+status, loan applications by status, money lent and instalments. One alert rule, `DocumentsStuckInReading`,
+fires when a document has been in READING for more than five minutes
+([infra/prometheus/alerts.yml](infra/prometheus/alerts.yml)).
+
+To put some load on it (Docker only):
+
+```bash
+docker run --rm -i --network tameio_default -e BASE_URL=http://frontend:5180 grafana/k6:1.1.0 run - < load/k6/browse.js
+```
+
+What breaks when the same app runs three times, and how each case is handled:
+
+| With three instances… | How Tameio handles it |
+| --- | --- |
+| the nightly job that marks instalments as due would run three times | It takes a PostgreSQL advisory lock first (`pg_try_advisory_xact_lock`): one instance does the work, the others skip. The update is idempotent, so a run that comes later changes nothing. |
+| all three would load the demo data at the first start | The same kind of lock, but waiting (`pg_advisory_xact_lock`): the first loads, the others wait, then find the data there. The "is it there?" check is inside the lock. |
+| all three would migrate the schema at once | Flyway takes its own lock in PostgreSQL; the others wait and find the migrations applied. |
+| all three would create the storage bucket at the first start | The one that loses the race gets "already exists" and carries on. (Three replicas found this one: the third crashed.) |
+| a user signs in on one instance and the next request lands on another | There is no session in memory: the signed token is in a cookie, and its session version is checked in the database, so any instance accepts it, and signing out everywhere works on all of them. |
+| two managers decide the same application on different instances | Optimistic locking (`@Version`): the second gets 409 "changed meanwhile". |
+| two entries move money on the same account from different instances | PostgreSQL row locks, taken in id order, so neither overdraws and they never deadlock. |
+| a reading job would be done twice | RabbitMQ gives each message to one consumer. A message delivered again, or sent again by an instance that restarts (each one resends events it had not sent), is skipped if the document is already read. |
+| an upload would be saved on one instance's disk | Files go to S3 storage, which every instance shares. |
+| each instance reports the same business counts | The dashboard takes the maximum across instances, not the sum. |
+
+What is not handled: open-source nginx checks replicas only passively, on real requests, so a replica that
+is up but slow keeps getting its share; a new replica takes up to 10 s to receive traffic and 15 s to appear
+in Prometheus.
+
 ## Run it locally
 
 ### Just see the app
@@ -118,8 +158,8 @@ books. Every figure is made up and every movement goes through the real ledger, 
 You can also create your own account with **Εγγραφή**. To start again from nothing:
 `docker compose --profile app down -v` removes the data volumes. Everything runs in containers:
 the React app (nginx), the Spring Boot API, document AI (Python), PostgreSQL, RabbitMQ and file storage (SeaweedFS).
-The RabbitMQ management UI is at http://localhost:15672 (tameio / tameio).
-There are no ready-made accounts or sample data.
+The RabbitMQ management UI is at http://localhost:15672 (tameio / tameio), Grafana at http://localhost:3000
+(the Tameio dashboard opens by itself; to edit, admin / tameio) and Prometheus at http://localhost:9090.
 
 ### Work on the code
 
@@ -153,6 +193,7 @@ Then open http://localhost:5180. Useful links while it runs:
 | Frontend components | Forms, pages and error messages in a simulated browser, with the API faked by MSW | `cd frontend && npm test` (`npm run test:coverage` for coverage) |
 | Document AI | Field extraction rules, real OCR, and a quality gate: the build fails if the classifier's macro F1 on unseen shops drops. The field-extraction dataset must rebuild byte for byte, and CI measures the baseline against the committed results (the LLMs need a GPU, so their rows come from the committed file). | `cd ml/document-ai && pytest` |
 | End to end | The real app in Chromium: sign-up, the API, Postgres and storage. Each test creates its own account. | start the stack and the backend, then `cd frontend && npm run e2e` |
+| Load | k6: owners listing documents and an analyst opening loan cases, 10 users for a minute; fails above 1% errors or a p95 of 500 ms for reads | see [Several instances](#several-instances) |
 
 CI runs all four on every push; the end-to-end job starts the whole stack with `docker compose --profile app up --wait`.
 
