@@ -1,12 +1,18 @@
 # The Spring Boot API. Built in one stage, run from a small JRE image in another.
 FROM eclipse-temurin:21.0.13_9-jdk-alpine AS build
 WORKDIR /src
-# Dependencies first, so a code change does not download them again
 COPY .mvn .mvn
 COPY mvnw pom.xml ./
-RUN sh mvnw -B -q dependency:go-offline
 COPY src src
-RUN sh mvnw -B -q -DskipTests package \
+# The cache mount keeps Maven and every dependency between builds on the same machine, so a code change
+# downloads nothing. A download can still fail for a moment (Maven Central has answered 404, DNS "try again"),
+# and the wrapper fetches Maven itself with no retry: the build tries three times before it gives up.
+RUN --mount=type=cache,target=/root/.m2 \
+    for attempt in 1 2 3; do \
+        sh mvnw -B -q -DskipTests package && break; \
+        [ "$attempt" = 3 ] && exit 1; \
+        echo "Build failed on attempt $attempt, probably a download; trying again"; sleep 15; \
+    done \
     # Split the jar into layers: dependencies change rarely, so their layer stays cached between releases
     && java -Djarmode=tools -jar target/tameio-core-*.jar extract --layers --launcher --destination extracted
 

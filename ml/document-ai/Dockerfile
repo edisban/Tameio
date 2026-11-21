@@ -2,8 +2,9 @@
 
 # Shared base: Python and Tesseract with its Greek and English language data
 FROM python:3.12.12-slim-trixie AS base
-RUN apt-get update \
-    && apt-get install --yes --no-install-recommends tesseract-ocr tesseract-ocr-ell tesseract-ocr-eng \
+# apt does not retry a failed download unless told to; pip retries by itself
+RUN apt-get -o Acquire::Retries=5 update \
+    && apt-get -o Acquire::Retries=5 install --yes --no-install-recommends tesseract-ocr tesseract-ocr-ell tesseract-ocr-eng \
     && rm -rf /var/lib/apt/lists/*
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
