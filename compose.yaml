@@ -2,6 +2,7 @@
 #
 # See the app, everything in containers (then open http://localhost:5180):
 #   docker compose --profile app up -d --build
+# One backend behind nginx (for three: --scale backend=3); Grafana on http://localhost:3000, Prometheus on http://localhost:9090.
 #
 # Work on the code: only the infrastructure (Postgres, storage, RabbitMQ, document AI) in containers, the backend and frontend on the host
 # for a fast edit-and-reload loop:
@@ -79,8 +80,8 @@ services:
       TAMEIO_RABBITMQ_HOST: rabbitmq
       # Local only: demo people, businesses and a year of history (README lists the sign-ins)
       TAMEIO_DEMO_DATA: "true"
-    ports:
-      - "127.0.0.1:8080:8080"
+    # Behind nginx (the frontend container); scale it with --scale backend=3. No host port, so replicas never
+    # clash over one: only nginx and Prometheus reach them, inside the Docker network.
     depends_on:
       postgres: { condition: service_healthy }
       storage: { condition: service_healthy }
@@ -96,7 +97,43 @@ services:
     depends_on:
       backend: { condition: service_healthy }
 
+  prometheus:
+    profiles: [app]
+    # Scrapes every backend replica and RabbitMQ every 15 s, and evaluates the alert rule
+    image: prom/prometheus:v3.5.0
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=7d
+    volumes:
+      - ./infra/prometheus:/etc/prometheus:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "127.0.0.1:9090:9090"
+    depends_on:
+      backend: { condition: service_healthy }
+
+  grafana:
+    profiles: [app]
+    # The dashboard and its data source are provisioned from files: nothing to set up by hand.
+    # Anyone may look (anonymous viewer); to edit, sign in as admin / tameio.
+    image: grafana/grafana:12.1.0
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: tameio
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/tameio.json
+    volumes:
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      - prometheus
+
 volumes:
   postgres-data:
   storage-data:
   rabbitmq-data:
+  prometheus-data:
+  grafana-data:

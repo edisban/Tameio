@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Clock;
+import java.time.Instant;
 import java.util.EnumSet;
 import java.util.Set;
 import java.util.UUID;
@@ -38,6 +39,7 @@ class LoanReviewService {
     private final LoanApplicationRepository applications;
     private final StaffService staff;
     private final LoanAccounts accounts;
+    private final RepaymentSchedule schedule;
     private final Clock clock;
 
     /** The queue, newest first; with a status, only that status. Drafts stay with the business. */
@@ -84,7 +86,9 @@ class LoanReviewService {
         LoanApplication application = submitted(id);
         UUID entry = accounts.disburse(application.getBusinessId(), application.getAccountId(), application.getAmount(),
             "Loan " + application.getId(), manager.id());
-        application.disbursed(entry, clock.instant());
+        Instant now = clock.instant();
+        application.disbursed(entry, now);
+        schedule.create(application, now);
         log.info("Loan application {} disbursed by {}: {}", id, manager.id(), application.getAmount());
         return CaseView.of(application);
     }

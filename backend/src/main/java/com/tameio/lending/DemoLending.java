@@ -37,6 +37,7 @@ class DemoLending {
     private final LoanApplicationRepository applications;
     private final LoanAssessor assessor;
     private final LoanAccounts accounts;
+    private final RepaymentSchedule schedule;
     private final Clock clock;
 
     @EventListener
@@ -92,6 +93,7 @@ class DemoLending {
         if (plan.until() == LoanStatus.DISBURSED) {
             UUID entry = accounts.disburse(demo.businessId(), accountId, terms.amount(), "Loan " + application.getId(), decider.id());
             application.disbursed(entry, now);
+            schedule.create(application, now);
         }
         return application;
     }

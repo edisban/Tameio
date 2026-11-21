@@ -2,6 +2,7 @@ package com.tameio.lending;
 
 import com.jayway.jsonpath.JsonPath;
 import com.tameio.TestcontainersConfiguration;
+import com.tameio.platform.persistence.AdvisoryLocks;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -15,10 +16,16 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import static com.tameio.TestUsers.freshAfm;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -33,6 +40,9 @@ class LendingApiTest {
 
     private final MockMvcTester mvc;
     private final JdbcTemplate jdbc;
+    private final InstalmentsDue instalmentsDue;
+    private final AdvisoryLocks locks;
+    private final TransactionTemplate transaction;
 
     private RequestPostProcessor owner;
     private String businessId;
@@ -40,9 +50,13 @@ class LendingApiTest {
     private RequestPostProcessor analyst;
     private RequestPostProcessor manager;
 
-    LendingApiTest(MockMvcTester mvc, JdbcTemplate jdbc) {
+    LendingApiTest(MockMvcTester mvc, JdbcTemplate jdbc, InstalmentsDue instalmentsDue, AdvisoryLocks locks,
+                   PlatformTransactionManager transactions) {
         this.mvc = mvc;
         this.jdbc = jdbc;
+        this.instalmentsDue = instalmentsDue;
+        this.locks = locks;
+        this.transaction = new TransactionTemplate(transactions);
     }
 
     @BeforeEach
@@ -105,6 +119,23 @@ class LendingApiTest {
     private MvcTestResult decide(String id, RequestPostProcessor who) {
         return post("/api/v1/bank/loan-applications/" + id + "/decision", who, """
             {"outcome": "APPROVE", "note": "Agreed"}""");
+    }
+
+    private String disbursed(String amount) throws Exception {
+        String id = recommended(amount);
+        decide(id, manager);
+        post("/api/v1/bank/loan-applications/" + id + "/disbursement", manager, "");
+        return id;
+    }
+
+    /** Moves the first instalment's date to yesterday, as if a month had passed. */
+    private void firstInstalmentFellDueYesterday(String id) {
+        jdbc.update("update loan_instalment set due_on = current_date - 1 where loan_application_id = ?::uuid and number = 1", id);
+    }
+
+    private long instalments(String id, String status) {
+        return jdbc.queryForObject("select count(*) from loan_instalment where loan_application_id = ?::uuid and status = ?",
+            Long.class, id, status);
     }
 
     private BigDecimal balance() {
@@ -264,5 +295,68 @@ class LendingApiTest {
 
         assertThat(seen).bodyJson().extractingPath("$.status").isEqualTo("APPROVED");
         assertThat(seen).bodyJson().extractingPath("$.decisionNote").isEqualTo("Agreed");
+    }
+
+    @Test
+    void aDisbursedLoanIsRepaidInMonthlyInstalmentsFromAMonthLater() throws Exception {
+        String id = disbursed("5000");
+
+        LocalDate first = jdbc.queryForObject("select min(due_on) from loan_instalment where loan_application_id = ?::uuid",
+            LocalDate.class, id);
+        assertThat(instalments(id, "SCHEDULED")).isEqualTo(24);
+        assertThat(first).isEqualTo(LocalDate.now(RepaymentSchedule.ATHENS).plusMonths(1));
+        MvcTestResult seen = mvc.get().uri("/api/v1/businesses/{b}/loan-applications/{id}", businessId, id).with(owner).exchange();
+        assertThat(seen).bodyJson().extractingPath("$.repayment.nextDueOn").isEqualTo(first.toString());
+        assertThat(seen).bodyJson().extractingPath("$.repayment.instalmentsDue").isEqualTo(0);
+    }
+
+    @Test
+    void anInstalmentBecomesDueOnceItsDateHasCome() throws Exception {
+        String id = disbursed("5000");
+        firstInstalmentFellDueYesterday(id);
+
+        instalmentsDue.run();
+
+        assertThat(instalments(id, "DUE")).isEqualTo(1);
+        MvcTestResult seen = mvc.get().uri("/api/v1/businesses/{b}/loan-applications/{id}", businessId, id).with(owner).exchange();
+        assertThat(seen).bodyJson().extractingPath("$.repayment.instalmentsDue").isEqualTo(1);
+    }
+
+    @Test
+    void runningTheJobAgainTheSameDayChangesNothing() throws Exception {
+        String id = disbursed("5000");
+        firstInstalmentFellDueYesterday(id);
+        instalmentsDue.run();
+
+        assertThat(instalmentsDue.run()).hasValue(0);
+        assertThat(instalments(id, "DUE")).isEqualTo(1);
+    }
+
+    @Test
+    void theJobSkipsWhileAnotherInstanceHoldsItsLock() throws Exception {
+        String id = disbursed("5000");
+        firstInstalmentFellDueYesterday(id);
+        CountDownLatch held = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        CompletableFuture<Void> otherInstance = CompletableFuture.runAsync(() -> transaction.executeWithoutResult(status -> {
+            locks.tryAcquire(AdvisoryLocks.Key.INSTALMENTS_DUE);
+            held.countDown();
+            await(release);
+        }));
+        await(held);
+
+        assertThat(instalmentsDue.run()).isEmpty();
+        assertThat(instalments(id, "DUE")).isZero();
+        release.countDown();
+        otherInstance.get(5, TimeUnit.SECONDS);
+    }
+
+    private static void await(CountDownLatch latch) {
+        try {
+            assertThat(latch.await(5, TimeUnit.SECONDS)).isTrue();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException(e);
+        }
     }
 }

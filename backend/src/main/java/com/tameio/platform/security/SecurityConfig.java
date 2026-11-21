@@ -54,7 +54,7 @@ class SecurityConfig {
             .addFilterAfter(new SessionCookieFilter(), CsrfFilter.class)
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/v1/auth/**").permitAll()
-                .requestMatchers("/actuator/health/**", "/actuator/info").permitAll()
+                .requestMatchers("/actuator/health/**", "/actuator/info", "/actuator/prometheus").permitAll()
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                 // With a temporary password, a user can only see who they are and choose a new password
                 .requestMatchers("/api/v1/me", "/api/v1/me/password").authenticated()

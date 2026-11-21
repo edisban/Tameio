@@ -1,0 +1,16 @@
+groups:
+  - name: tameio
+    rules:
+      # Reading takes seconds. A document still in READING after five minutes means its job was lost or
+      # document AI hangs: the owner is waiting and nothing will move it on its own.
+      - alert: DocumentsStuckInReading
+        # Every replica reports the same count from the database, so take the largest, not the sum
+        expr: max(tameio_documents_stuck_reading) > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $value }} document(s) in READING for more than 5 minutes"
+          description: >-
+            Check document AI (http://localhost:8090/health), the queue tameio.documents.read and its dead letters
+            in RabbitMQ (http://localhost:15672). The owner can send a failed document to be read again.

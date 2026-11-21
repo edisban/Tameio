@@ -1,0 +1,27 @@
+# What Prometheus scrapes, and the alert rules it evaluates
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - alerts.yml
+
+scrape_configs:
+  # Every backend replica: Docker's DNS gives one address per replica, so each becomes its own target
+  - job_name: backend
+    metrics_path: /actuator/prometheus
+    dns_sd_configs:
+      - names: [backend]
+        type: A
+        port: 8080
+        refresh_interval: 15s
+
+  # Queue depth and dead letters, one series per queue
+  - job_name: rabbitmq
+    metrics_path: /metrics/per-object
+    static_configs:
+      - targets: [rabbitmq:15692]
+
+  - job_name: prometheus
+    static_configs:
+      - targets: [localhost:9090]
