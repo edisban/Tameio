@@ -23,6 +23,9 @@ export type LoanTerms = {
   description: string | null
 }
 
+/** A disbursed loan: the next instalment (none once all are due) and how many are due now. */
+export type Repayment = { nextDueOn: string | null; nextAmount: number | null; instalmentsDue: number }
+
 /** An application as the business sees it. */
 export type Application = {
   id: string
@@ -40,6 +43,7 @@ export type Application = {
   decisionNote: string | null
   decidedAt: string | null
   disbursedAt: string | null
+  repayment: Repayment | null
 }
 
 export type QueueItem = {

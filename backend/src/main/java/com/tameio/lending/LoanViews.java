@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -28,13 +29,18 @@ final class LoanViews {
     /** An application as the business sees it: no risk score, which is the bank's working tool. */
     record ApplicationView(UUID id, UUID accountId, BigDecimal amount, int termMonths, LoanPurpose purpose, String description,
                            BigDecimal annualRate, BigDecimal monthlyInstalment, LoanStatus status, Figures figures,
-                           Instant createdAt, Instant submittedAt, String decisionNote, Instant decidedAt, Instant disbursedAt) {
+                           Instant createdAt, Instant submittedAt, String decisionNote, Instant decidedAt, Instant disbursedAt,
+                           Repayment repayment) {
 
-        static ApplicationView of(LoanApplication a) {
+        static ApplicationView of(LoanApplication a, Repayment repayment) {
             return new ApplicationView(a.getId(), a.getAccountId(), a.getAmount(), a.getTermMonths(), a.getPurpose(),
                 a.getDescription(), a.getAnnualRate(), a.getMonthlyInstalment(), a.getStatus(), Figures.of(a), a.getCreatedAt(),
-                a.getSubmittedAt(), a.getDecisionNote(), a.getDecidedAt(), a.getDisbursedAt());
+                a.getSubmittedAt(), a.getDecisionNote(), a.getDecidedAt(), a.getDisbursedAt(), repayment);
         }
+    }
+
+    /** A disbursed loan's repayment: the next instalment (none once all are due) and how many are due now. */
+    record Repayment(LocalDate nextDueOn, BigDecimal nextAmount, long instalmentsDue) {
     }
 
     /** One line of the back office's queue. */

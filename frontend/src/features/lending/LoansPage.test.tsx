@@ -19,6 +19,7 @@ const draft: Application = {
   annualRate: 0.07, monthlyInstalment: 308.77, status: 'DRAFT',
   figures: { averageMonthlyInflow: 9000, averageMonthlyOutflow: 7000, averageMonthlyExpenses: 6500, balance: 12500, monthsOfHistory: 10 },
   createdAt: '2026-11-20T10:00:00Z', submittedAt: null, decisionNote: null, decidedAt: null, disbursedAt: null,
+  repayment: null,
 }
 
 function serve(applications: () => Application[], accounts: BankAccount[] = [account]) {
@@ -93,5 +94,16 @@ describe('LoansPage', () => {
 
     expect(await screen.findAllByText('Υποβλήθηκε')).not.toHaveLength(0)
     expect(screen.queryByRole('button', { name: 'Υποβολή στην τράπεζα' })).not.toBeInTheDocument()
+  })
+
+  it('shows a paid-out loan with its next instalment and the ones that are due', async () => {
+    serve(() => [{
+      ...draft, status: 'DISBURSED', submittedAt: '2026-11-20T11:00:00Z', decidedAt: '2026-11-20T12:00:00Z',
+      disbursedAt: '2026-11-20T13:00:00Z', repayment: { nextDueOn: '2026-12-20', nextAmount: 308.77, instalmentsDue: 2 },
+    }])
+    renderPage()
+
+    expect(await screen.findByText('2 δόσεις είναι πληρωτέες.')).toBeInTheDocument()
+    expect(screen.getByText(/Επόμενη δόση 308,77\s€ στις 20 Δεκεμβρίου 2026\./)).toBeInTheDocument()
   })
 })

@@ -1,9 +1,28 @@
 import { Alert, Box, Button, Card, CardContent, Chip, Stack, Step, StepLabel, Stepper, Typography } from '@mui/material'
 import { formatDateTime, formatMoney } from '../documents/files'
-import type { Application } from './api'
+import type { Application, Repayment } from './api'
 import { journey, purposeLabel, statusColour, statusLabel } from './labels'
 
 const percent = new Intl.NumberFormat('el-GR', { style: 'percent', maximumFractionDigits: 2 })
+const day = new Intl.DateTimeFormat('el-GR', { dateStyle: 'long' })
+
+/** The next instalment, and a warning when some are due. */
+function RepaymentLine({ repayment }: { repayment: Repayment }) {
+  return (
+    <Stack spacing={1}>
+      {repayment.instalmentsDue > 0 && (
+        <Alert severity="warning">
+          {repayment.instalmentsDue === 1 ? 'Μία δόση είναι πληρωτέα.' : `${repayment.instalmentsDue} δόσεις είναι πληρωτέες.`}
+        </Alert>
+      )}
+      {repayment.nextDueOn && repayment.nextAmount !== null && (
+        <Typography variant="body2">
+          Επόμενη δόση {formatMoney(repayment.nextAmount)} στις {day.format(new Date(repayment.nextDueOn))}.
+        </Typography>
+      )}
+    </Stack>
+  )
+}
 
 /** Where an application is on its way, as the business follows it. */
 function Progress({ application }: { application: Application }) {
@@ -67,6 +86,7 @@ export function ApplicationCard({ application, onSubmit, submitting }: {
               Πιστώθηκε στον λογαριασμό σας στις {formatDateTime(application.disbursedAt)}.
             </Typography>
           )}
+          {application.repayment && <RepaymentLine repayment={application.repayment} />}
         </Stack>
       </CardContent>
     </Card>
