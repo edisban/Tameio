@@ -80,4 +80,18 @@ class DemoDataTest {
             where a.balance <> (select coalesce(sum(p.amount), 0) from posting p where p.account_id = a.id)""", Long.class);
         assertThat(mismatched).isZero();
     }
+
+    @Test
+    void theBankHasADemoLoanApplicationInEveryStatus() {
+        var statuses = jdbc.queryForList("select distinct status from loan_application", String.class);
+
+        assertThat(statuses).containsExactlyInAnyOrder("DRAFT", "SUBMITTED", "IN_REVIEW", "RECOMMENDED", "APPROVED", "DECLINED", "DISBURSED");
+    }
+
+    @Test
+    void theDisbursedDemoLoanIsInTheLedger() {
+        BigDecimal loans = jdbc.queryForObject("select balance from bank_account where code = 'LOANS'", BigDecimal.class);
+
+        assertThat(loans).isEqualByComparingTo("-25000.00");
+    }
 }
