@@ -232,6 +232,30 @@
 	<build>
 		<plugins>
 			<plugin>
+				<!-- Fails the build on unused imports, imports out of order, trailing spaces or a missing final
+				     newline; ./mvnw spotless:apply fixes them. Layout itself is left to review, so no file is rewritten. -->
+				<groupId>com.diffplug.spotless</groupId>
+				<artifactId>spotless-maven-plugin</artifactId>
+				<version>2.44.5</version>
+				<configuration>
+					<java>
+						<removeUnusedImports/>
+						<importOrder>
+							<order>,java|javax,\#</order>
+						</importOrder>
+						<trimTrailingWhitespace/>
+						<endWithNewline/>
+					</java>
+				</configuration>
+				<executions>
+					<execution>
+						<goals>
+							<goal>check</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 			</plugin>

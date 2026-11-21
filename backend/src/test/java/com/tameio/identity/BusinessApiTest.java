@@ -12,7 +12,6 @@ import org.springframework.test.web.servlet.assertj.MockMvcTester;
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
-
 import static com.tameio.TestUsers.businessUser;
 import static com.tameio.TestUsers.freshAfm;
 import static com.tameio.TestUsers.user;
