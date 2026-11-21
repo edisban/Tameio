@@ -42,6 +42,12 @@ public class LoanAccounts {
     private final Ledger ledger;
     private final Clock clock;
 
+    /** The business's accounts, oldest first. */
+    @Transactional(readOnly = true)
+    public List<UUID> accountIds(UUID businessId) {
+        return accounts.findByBusinessIdOrderByCreatedAt(businessId).stream().map(BankAccount::getId).toList();
+    }
+
     /** The figures of one of the business's accounts; another business's account is not found. */
     @Transactional(readOnly = true)
     public AccountFigures figures(UUID businessId, UUID accountId) {
