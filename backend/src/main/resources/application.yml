@@ -107,12 +107,22 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,modulith
+        # prometheus is reached only inside the Docker network: nginx forwards nothing but /api
+        include: health,info,modulith,prometheus
   endpoint:
     health:
       # /actuator/health/liveness and /readiness for load balancers and Kubernetes
       probes:
         enabled: true
+  metrics:
+    tags:
+      application: tameio-core
+      # Which replica answered: the container's host name. Not "instance", which Prometheus sets itself
+      replica: ${HOSTNAME:local}
+    distribution:
+      # Buckets for http.server.requests, so Prometheus can work out the 95th percentile across replicas
+      percentiles-histogram:
+        "[http.server.requests]": true
 
 springdoc:
   swagger-ui:
