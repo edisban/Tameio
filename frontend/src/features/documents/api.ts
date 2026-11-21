@@ -123,7 +123,18 @@ export function useUploadDocument(businessId: string) {
       body.append('file', file)
       return api<DocumentItem>(base(businessId), { method: 'POST', body })
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: keys.all(businessId) }),
+    onSuccess: created => {
+      // Shown at once on the first page from the answer itself, then confirmed by a fresh read
+      queryClient.setQueriesData<Page<DocumentItem>>({ queryKey: keys.all(businessId) }, old =>
+        old && Array.isArray(old.content) && old.page.number === 0
+          ? {
+              content: [created, ...old.content.filter(d => d.id !== created.id)].slice(0, old.page.size),
+              page: { ...old.page, totalElements: old.page.totalElements + 1 },
+            }
+          : old,
+      )
+      return queryClient.invalidateQueries({ queryKey: keys.all(businessId) })
+    },
   })
 }
 

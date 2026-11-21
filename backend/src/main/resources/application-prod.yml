@@ -25,6 +25,8 @@ tameio:
     url: ${TAMEIO_DOCUMENT_AI_URL}
   banking:
     demo-deposits: false
+  demo:
+    enabled: false
 
 logging:
   structured:

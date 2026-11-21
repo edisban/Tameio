@@ -80,6 +80,8 @@ services:
       # Local only: the first bank administrator (must change this password at first sign-in)
       TAMEIO_BOOTSTRAP_ADMIN_EMAIL: admin@tameio.local
       TAMEIO_BOOTSTRAP_ADMIN_PASSWORD: tameio-admin-2026
+      # Local only: demo people, businesses and a year of history (README lists the sign-ins)
+      TAMEIO_DEMO_DATA: "true"
     ports:
       - "127.0.0.1:8080:8080"
     depends_on:
