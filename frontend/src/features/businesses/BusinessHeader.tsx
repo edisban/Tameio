@@ -3,12 +3,13 @@ import { Link as RouterLink } from 'react-router'
 import { colourFor, initials } from '../../app/theme'
 import { useBusiness } from './api'
 
-export type BusinessSection = 'accounts' | 'documents' | 'accounting'
+export type BusinessSection = 'accounts' | 'documents' | 'accounting' | 'loans'
 
 const sections: { value: BusinessSection; label: string; path: string }[] = [
   { value: 'accounts', label: 'Λογαριασμοί', path: '/accounts' },
   { value: 'documents', label: 'Παραστατικά', path: '' },
   { value: 'accounting', label: 'Λογιστικά', path: '/accounting' },
+  { value: 'loans', label: 'Δάνεια', path: '/loans' },
 ]
 
 /** The business's name and ΑΦΜ, and tabs for its sections. Renders the section only once the business is known. */
