@@ -1,4 +1,3 @@
-import AccountBalanceOutlinedIcon from '@mui/icons-material/AccountBalanceOutlined'
 import AssignmentOutlinedIcon from '@mui/icons-material/AssignmentOutlined'
 import BadgeOutlinedIcon from '@mui/icons-material/BadgeOutlined'
 import DevicesOtherRoundedIcon from '@mui/icons-material/DevicesOtherRounded'
@@ -7,9 +6,7 @@ import AccountBalanceWalletOutlinedIcon from '@mui/icons-material/AccountBalance
 import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined'
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded'
 import MenuRoundedIcon from '@mui/icons-material/MenuRounded'
-import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined'
 import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined'
-import SyncAltRoundedIcon from '@mui/icons-material/SyncAltRounded'
 import {
   AppBar,
   Avatar,
@@ -36,13 +33,8 @@ const SIDEBAR_WIDTH = 280
 
 type NavItem = { label: string; icon: ReactNode; to?: string }
 
-// What the product will hold; items without a page yet are shown as coming, so the direction is clear
-const businessNavigation: NavItem[] = [
-  { label: 'Επιχειρήσεις', icon: <StorefrontOutlinedIcon />, to: '/businesses' },
-  { label: 'Λογιστικά', icon: <ReceiptLongOutlinedIcon /> },
-  { label: 'myDATA', icon: <SyncAltRoundedIcon /> },
-  { label: 'Δάνεια', icon: <AccountBalanceOutlinedIcon /> },
-]
+// Accounts, documents, books and loans are tabs of each business, so one entry leads to all of them
+const businessNavigation: NavItem[] = [{ label: 'Επιχειρήσεις', icon: <StorefrontOutlinedIcon />, to: '/businesses' }]
 
 /** The bank's back office: what each member of staff sees depends on their role. */
 function navigationFor(me: Me | null | undefined): NavItem[] {
@@ -82,7 +74,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
               key={item.label}
               component={Link}
               to={item.to}
-              selected={item.to === '/bank' ? pathname === '/bank' : pathname.startsWith(item.to)}
+              selected={item.to === '/bank' ? pathname === '/bank' || pathname.startsWith('/bank/loans') : pathname.startsWith(item.to)}
               onClick={onNavigate}
             >
               <ListItemIcon sx={{ color: 'inherit', minWidth: 36 }}>{item.icon}</ListItemIcon>
