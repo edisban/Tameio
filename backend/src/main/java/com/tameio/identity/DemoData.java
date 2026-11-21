@@ -1,6 +1,7 @@
 package com.tameio.identity;
 
 import com.tameio.platform.demo.DemoYear;
+import com.tameio.platform.persistence.AdvisoryLocks;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
@@ -57,29 +58,42 @@ class DemoData implements ApplicationRunner {
     private final MembershipRepository memberships;
     private final PasswordEncoder passwords;
     private final ApplicationEventPublisher events;
+    private final AdvisoryLocks locks;
     private final TransactionTemplate transaction;
     private final Clock clock;
 
     DemoData(UserAccountRepository accounts, BusinessRepository businesses, MembershipRepository memberships, PasswordEncoder passwords,
-             ApplicationEventPublisher events, PlatformTransactionManager transactions, Clock clock) {
+             ApplicationEventPublisher events, AdvisoryLocks locks, PlatformTransactionManager transactions, Clock clock) {
         this.accounts = accounts;
         this.businesses = businesses;
         this.memberships = memberships;
         this.passwords = passwords;
         this.events = events;
+        this.locks = locks;
         this.transaction = new TransactionTemplate(transactions);
         this.clock = clock;
     }
 
+    /**
+     * Every instance runs this at start-up. The first to take the lock loads the data; the others wait for it,
+     * then find the data there. Without the lock, several instances could all see an empty database at once.
+     */
     @Override
     public void run(ApplicationArguments args) {
-        if (accounts.existsByEmail(OWNERS.getFirst().email())) {
-            log.info("Demo data is already there");
-            return;
-        }
         long started = System.nanoTime();
-        transaction.executeWithoutResult(status -> seed());
-        log.info("Loaded the demo data in {} ms", (System.nanoTime() - started) / 1_000_000);
+        boolean loaded = Boolean.TRUE.equals(transaction.execute(status -> {
+            locks.acquire(AdvisoryLocks.Key.DEMO_DATA);
+            if (accounts.existsByEmail(OWNERS.getFirst().email())) {
+                return false;
+            }
+            seed();
+            return true;
+        }));
+        if (loaded) {
+            log.info("Loaded the demo data in {} ms", (System.nanoTime() - started) / 1_000_000);
+        } else {
+            log.info("Demo data is already there");
+        }
     }
 
     private void seed() {
