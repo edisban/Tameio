@@ -80,6 +80,12 @@ jobs:
           echo '```json' >> "$GITHUB_STEP_SUMMARY"
           cat models/metrics.json >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
+      # Only the baseline runs here: the LLM variants need a GPU, so their results come from the committed file
+      - name: Field extraction, baseline against the committed results
+        run: |
+          python -m extraction.evaluate --variants baseline --check
+          echo '### Field extraction' >> "$GITHUB_STEP_SUMMARY"
+          cat results/field-extraction/comparison.md >> "$GITHUB_STEP_SUMMARY"
 
   e2e:
     name: End-to-end (Playwright)
