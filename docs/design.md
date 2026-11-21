@@ -200,6 +200,7 @@ decision ([ADR 0005](adr/0005-human-decides-every-credit-decision.md)).
 | 6 | Lending: applications, state machine, maker-checker, explained risk score, disbursement | Done |
 | 7 | Audit log: append-only, filled from domain events, admin search | Next |
 | 8 | Observability and load balancing: Prometheus, Grafana, three instances behind nginx, k6 | Planned |
+| 9 | Field extraction compared: rules, a prompted LLM and a LoRA fine-tune, with a model card | Done |
 
 ## 13. Later ideas
 
