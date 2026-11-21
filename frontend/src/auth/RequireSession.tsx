@@ -27,5 +27,8 @@ export function RequireSession({ children }: { children: ReactNode }) {
   if (!session.data) {
     return <Navigate to="/sign-in" replace state={{ from: location.pathname }} />
   }
+  if (session.data.mustChangePassword) {
+    return <Navigate to="/change-password" replace />
+  }
   return children
 }

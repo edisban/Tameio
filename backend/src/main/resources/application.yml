@@ -79,6 +79,10 @@ tameio:
     access-key: ${TAMEIO_S3_ACCESS_KEY:tameio}
     secret-key: ${TAMEIO_S3_SECRET_KEY:tameio-dev-secret}
     create-bucket: true
+  bootstrap:
+    # The first administrator, created only while the bank has none; the password must be changed at first sign-in
+    admin-email: ${TAMEIO_BOOTSTRAP_ADMIN_EMAIL:}
+    admin-password: ${TAMEIO_BOOTSTRAP_ADMIN_PASSWORD:}
   document-ai:
     url: ${TAMEIO_DOCUMENT_AI_URL:http://localhost:8090}
     connect-timeout: 2s

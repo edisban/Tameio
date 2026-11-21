@@ -1,4 +1,8 @@
 import AccountBalanceOutlinedIcon from '@mui/icons-material/AccountBalanceOutlined'
+import AssignmentOutlinedIcon from '@mui/icons-material/AssignmentOutlined'
+import BadgeOutlinedIcon from '@mui/icons-material/BadgeOutlined'
+import DevicesOtherRoundedIcon from '@mui/icons-material/DevicesOtherRounded'
+import FactCheckOutlinedIcon from '@mui/icons-material/FactCheckOutlined'
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded'
 import MenuRoundedIcon from '@mui/icons-material/MenuRounded'
 import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined'
@@ -22,7 +26,7 @@ import {
 } from '@mui/material'
 import { useState, type ReactNode } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router'
-import { useSession, useSignOut } from '../auth/session'
+import { hasRole, isStaff, useSession, useSignOut, type Me } from '../auth/session'
 import { Logo } from './Logo'
 import { colourFor, initials } from './theme'
 
@@ -31,16 +35,30 @@ const SIDEBAR_WIDTH = 280
 type NavItem = { label: string; icon: ReactNode; to?: string }
 
 // What the product will hold; items without a page yet are shown as coming, so the direction is clear
-const navigation: NavItem[] = [
+const businessNavigation: NavItem[] = [
   { label: 'Επιχειρήσεις', icon: <StorefrontOutlinedIcon />, to: '/businesses' },
   { label: 'Λογιστικά', icon: <ReceiptLongOutlinedIcon /> },
   { label: 'myDATA', icon: <SyncAltRoundedIcon /> },
   { label: 'Δάνεια', icon: <AccountBalanceOutlinedIcon /> },
 ]
 
+/** The bank's back office: what each member of staff sees depends on their role. */
+function navigationFor(me: Me | null | undefined): NavItem[] {
+  if (!me || !isStaff(me)) return businessNavigation
+  const items: NavItem[] = [
+    { label: 'Αιτήσεις δανείων', icon: <AssignmentOutlinedIcon />, to: '/bank' },
+  ]
+  if (hasRole(me, 'ADMIN')) {
+    items.push({ label: 'Προσωπικό', icon: <BadgeOutlinedIcon />, to: '/bank/staff' })
+    items.push({ label: 'Αρχείο ενεργειών', icon: <FactCheckOutlinedIcon /> })
+  }
+  return items
+}
+
 function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const session = useSession()
   const signOut = useSignOut()
+  const signOutEverywhere = useSignOut(true)
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const me = session.data
@@ -52,13 +70,13 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
       </Box>
 
       <List component="nav" aria-label="Κύριο μενού" sx={{ mt: 2, display: 'grid', gap: 0.5 }}>
-        {navigation.map(item =>
+        {navigationFor(me).map(item =>
           item.to ? (
             <ListItemButton
               key={item.label}
               component={Link}
               to={item.to}
-              selected={pathname.startsWith(item.to)}
+              selected={item.to === '/bank' ? pathname === '/bank' : pathname.startsWith(item.to)}
               onClick={onNavigate}
             >
               <ListItemIcon sx={{ color: 'inherit', minWidth: 36 }}>{item.icon}</ListItemIcon>
@@ -97,6 +115,17 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
               {me.email}
             </Typography>
           </Box>
+          <Tooltip title="Αποσύνδεση από όλες τις συσκευές">
+            <IconButton
+              aria-label="Αποσύνδεση από όλες τις συσκευές"
+              size="small"
+              sx={{ color: 'inherit' }}
+              disabled={signOutEverywhere.isPending}
+              onClick={() => signOutEverywhere.mutate(undefined, { onSettled: () => navigate('/sign-in', { replace: true }) })}
+            >
+              <DevicesOtherRoundedIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
           <Tooltip title="Αποσύνδεση">
             <IconButton
               aria-label="Αποσύνδεση"

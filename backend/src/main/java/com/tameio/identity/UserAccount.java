@@ -10,6 +10,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Locale;
@@ -43,6 +44,22 @@ class UserAccount extends AuditedEntity {
     @Column(name = "locked_until")
     private Instant lockedUntil;
 
+    /** A disabled account cannot sign in, and its sessions end at once. */
+    @Column(nullable = false)
+    private boolean active = true;
+
+    /** Raised to end every session issued before; tokens carry the version they were issued with. */
+    @Column(name = "session_version", nullable = false)
+    private long sessionVersion;
+
+    /** Set while the user holds a temporary password the bank gave them. */
+    @Column(name = "must_change_password", nullable = false)
+    private boolean mustChangePassword;
+
+    /** The largest loan a member of bank staff may approve; null for no approval authority. */
+    @Column(name = "approval_limit", precision = 14, scale = 2)
+    private BigDecimal approvalLimit;
+
     static UserAccount create(String email, String passwordHash, String fullName, UserRole role) {
         var account = new UserAccount();
         account.email = normaliseEmail(email);
@@ -50,6 +67,21 @@ class UserAccount extends AuditedEntity {
         account.fullName = fullName;
         account.role = role;
         return account;
+    }
+
+    /** A member of bank staff, with a temporary password to replace at first sign-in. */
+    static UserAccount staff(String email, String temporaryPasswordHash, String fullName, UserRole role, BigDecimal approvalLimit) {
+        if (role == UserRole.BUSINESS) {
+            throw new IllegalArgumentException("Staff accounts have a bank role");
+        }
+        UserAccount account = create(email, temporaryPasswordHash, fullName, role);
+        account.mustChangePassword = true;
+        account.approvalLimit = approvalLimit;
+        return account;
+    }
+
+    boolean isStaff() {
+        return role != UserRole.BUSINESS;
     }
 
     static String normaliseEmail(String email) {
@@ -77,5 +109,46 @@ class UserAccount extends AuditedEntity {
     void recordSuccessfulSignIn() {
         failedSignIns = 0;
         lockedUntil = null;
+    }
+
+    /** The user chose a new password: it replaces any temporary one, and every other session ends. */
+    void changePassword(String newHash) {
+        passwordHash = newHash;
+        mustChangePassword = false;
+        endSessions();
+    }
+
+    /** The bank set a temporary password: the user must replace it, and every session ends. */
+    void resetPassword(String temporaryHash) {
+        passwordHash = temporaryHash;
+        mustChangePassword = true;
+        failedSignIns = 0;
+        lockedUntil = null;
+        endSessions();
+    }
+
+    void deactivate() {
+        active = false;
+        endSessions();
+    }
+
+    void activate() {
+        active = true;
+    }
+
+    void changeRole(UserRole newRole, BigDecimal newApprovalLimit) {
+        if (newRole == UserRole.BUSINESS || role == UserRole.BUSINESS) {
+            throw new IllegalArgumentException("Business and staff accounts stay what they are");
+        }
+        if (newRole != role) {
+            role = newRole;
+            // The role is in the token: sessions with the old one must not go on
+            endSessions();
+        }
+        approvalLimit = newApprovalLimit;
+    }
+
+    void endSessions() {
+        sessionVersion++;
     }
 }

@@ -34,7 +34,12 @@ public class SessionTokens {
         this.clock = clock;
     }
 
-    public String issue(String userId, String name, String email, Collection<String> roles) {
+    /**
+     * @param sessionVersion the account's session version now; raising it later ends this session
+     * @param mustChangePassword the user signed in with a temporary password and must replace it first
+     */
+    public String issue(String userId, String name, String email, Collection<String> roles, long sessionVersion,
+                        boolean mustChangePassword) {
         Instant now = clock.instant();
         JwtClaimsSet claims = JwtClaimsSet.builder()
             .issuer(ISSUER)
@@ -44,6 +49,8 @@ public class SessionTokens {
             .claim("name", name)
             .claim("email", email)
             .claim(ROLES_CLAIM, roles)
+            .claim(SessionStatus.VERSION_CLAIM, sessionVersion)
+            .claim(SessionStatus.PASSWORD_CHANGE_CLAIM, mustChangePassword)
             .build();
         JwsHeader header = JwsHeader.with(MacAlgorithm.HS256).build();
         return encoder.encode(JwtEncoderParameters.from(header, claims)).getTokenValue();

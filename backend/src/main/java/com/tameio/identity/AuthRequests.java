@@ -17,6 +17,14 @@ final class AuthRequests {
     }
 
     /**
+     * A new password: at least 12 characters, as asked of accounts that reach financial data.
+     */
+    record ChangePassword(
+        @NotBlank(message = "Current password is required") @Size(max = 128) String currentPassword,
+        @NotBlank(message = "New password is required") @Size(min = 12, max = 128, message = "Password must be 12 to 128 characters") String newPassword) {
+    }
+
+    /**
      * At least 8 characters (OWASP's minimum when there is no second factor). The upper limit stops
      * someone from sending megabytes for the server to hash.
      */

@@ -1,6 +1,7 @@
 package com.tameio.identity;
 
 import com.tameio.platform.security.SessionTokens;
+import com.tameio.platform.web.BadRequestException;
 import com.tameio.platform.web.ConflictException;
 import com.tameio.platform.web.TooManyRequestsException;
 import com.tameio.platform.web.UnauthorizedException;
@@ -65,6 +66,12 @@ class AuthService {
             throw new UnauthorizedException(WRONG_CREDENTIALS);
         }
         UserAccount account = found.get();
+        if (!account.isActive()) {
+            // The same answer as a wrong password: a disabled account reveals nothing
+            passwords.matches(request.password(), dummyHash);
+            log.info("Sign-in refused for disabled user {}", account.getId());
+            throw new UnauthorizedException(WRONG_CREDENTIALS);
+        }
         if (account.isLocked(now)) {
             throw new TooManyRequestsException("Too many failed sign-ins. Try again in 15 minutes.");
         }
@@ -82,10 +89,39 @@ class AuthService {
         return signedIn(account);
     }
 
+    /**
+     * Replaces the password after checking the current one. Every other session ends; the caller gets a
+     * new one, no longer limited to changing the password.
+     */
+    @Transactional(noRollbackFor = UnauthorizedException.class)
+    public SignedIn changePassword(String userId, AuthRequests.ChangePassword request) {
+        UserAccount account = accounts.findById(UUID.fromString(userId))
+            .filter(UserAccount::isActive)
+            .orElseThrow(() -> new UnauthorizedException("The session has ended."));
+        if (!passwords.matches(request.currentPassword(), account.getPasswordHash())) {
+            account.recordFailedSignIn(clock.instant());
+            throw new UnauthorizedException("The current password is wrong.");
+        }
+        if (request.newPassword().equals(request.currentPassword())) {
+            throw new BadRequestException("Choose a password different from the current one.");
+        }
+        account.changePassword(passwords.encode(request.newPassword()));
+        log.info("User {} changed their password", account.getId());
+        return signedIn(account);
+    }
+
+    /** Ends every session of the user, on every device, including this one. */
+    @Transactional
+    public void signOutEverywhere(String userId) {
+        accounts.findById(UUID.fromString(userId)).ifPresent(UserAccount::endSessions);
+        log.info("User {} signed out everywhere", userId);
+    }
+
     private SignedIn signedIn(UserAccount account) {
         String id = account.getId().toString();
         List<String> roles = List.of(account.getRole().name());
-        String token = tokens.issue(id, account.getFullName(), account.getEmail(), roles);
-        return new SignedIn(token, new MeResponse(id, account.getFullName(), account.getEmail(), roles));
+        String token = tokens.issue(id, account.getFullName(), account.getEmail(), roles, account.getSessionVersion(),
+            account.isMustChangePassword());
+        return new SignedIn(token, new MeResponse(id, account.getFullName(), account.getEmail(), roles, account.isMustChangePassword()));
     }
 }

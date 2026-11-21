@@ -15,7 +15,9 @@ A platform for Greek small businesses. It keeps their books, sends their invoice
 
 6. **Books and VAT.** Every confirmed document becomes an entry in the expense book. The accounting page shows the year's spending, input VAT and document count, a chart by month (or a table), totals by category, the VAT of each quarter, and the book itself, filterable by category. The accountant gets it as a CSV file that Greek Excel opens as is.
 
-Coming next: myDATA, then loan applications.
+7. **Bank staff and their access.** The bank's staff never sign up: an administrator creates each account with a role (credit analyst, credit manager, administrator) and an approval limit, and hands over a temporary password that must be replaced at first sign-in. Disabling an account, resetting its password, changing its role or "sign out everywhere" ends that person's sessions at once: every request checks the token's session version against the account.
+
+Coming next: loan applications with maker-checker approval, a tamper-evident audit log, and portfolio analytics.
 
 ## Stack
 
@@ -73,7 +75,9 @@ Requirements: Docker only.
 docker compose --profile app up -d --build
 ```
 
-Open http://localhost:5180 and create an account with **Εγγραφή**. Everything runs in containers:
+Open http://localhost:5180 and create an account with **Εγγραφή**. For the bank's back office, sign in as
+**admin@tameio.local** with the temporary password **tameio-admin-2026**; you will be asked to choose your own
+(the end-to-end tests set it to e2e-admin-password-2026 when they run first). Everything runs in containers:
 the React app (nginx), the Spring Boot API, document AI (Python), PostgreSQL, RabbitMQ and file storage (SeaweedFS).
 The RabbitMQ management UI is at http://localhost:15672 (tameio / tameio).
 There are no ready-made accounts or sample data.
@@ -134,6 +138,8 @@ The backend reads its settings from environment variables prefixed `TAMEIO_`. Th
 | `TAMEIO_RABBITMQ_USERNAME` | `tameio` |
 | `TAMEIO_RABBITMQ_PASSWORD` | `tameio` |
 | `TAMEIO_DOCUMENT_AI_URL` | `http://localhost:8090` |
+| `TAMEIO_BOOTSTRAP_ADMIN_EMAIL` | none: the first administrator, created only while there is none |
+| `TAMEIO_BOOTSTRAP_ADMIN_PASSWORD` | none: their temporary password |
 
 ## Project layout
 

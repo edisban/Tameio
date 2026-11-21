@@ -5,7 +5,7 @@ import { Navigate, Link as RouterLink, useLocation, useNavigate } from 'react-ro
 import { z } from 'zod'
 import { ApiError } from '../api/http'
 import { AuthLayout } from './AuthLayout'
-import { useSession, useSignIn } from './session'
+import { homeOf, useSession, useSignIn } from './session'
 
 const schema = z.object({
   email: z.string().trim().min(1, 'Γράψτε το email σας'),
@@ -26,20 +26,20 @@ export function SignInPage() {
   const session = useSession()
   const signIn = useSignIn()
   const navigate = useNavigate()
-  const from = (useLocation().state as { from?: string } | null)?.from ?? '/businesses'
+  const from = (useLocation().state as { from?: string } | null)?.from
   const form = useForm<Form>({ resolver: zodResolver(schema), defaultValues: { email: '', password: '' } })
   const { errors, isSubmitting } = form.formState
 
   const submit = form.handleSubmit(async values => {
     try {
-      await signIn.mutateAsync(values)
-      navigate(from, { replace: true })
+      const me = await signIn.mutateAsync(values)
+      navigate(me.mustChangePassword ? '/change-password' : (from ?? homeOf(me)), { replace: true })
     } catch {
       // Shown from signIn.error below
     }
   })
 
-  if (session.data) return <Navigate to={from} replace />
+  if (session.data) return <Navigate to={session.data.mustChangePassword ? '/change-password' : (from ?? homeOf(session.data))} replace />
 
   return (
     <AuthLayout title="Σύνδεση" subtitle="Συνδεθείτε για να δείτε τις επιχειρήσεις σας.">

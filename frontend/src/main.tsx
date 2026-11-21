@@ -2,7 +2,7 @@ import { CssBaseline, ThemeProvider } from '@mui/material'
 import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { createBrowserRouter, Navigate, RouterProvider } from 'react-router'
+import { createBrowserRouter, RouterProvider } from 'react-router'
 import { Layout } from './app/Layout'
 import { theme } from './app/theme'
 import { ApiError } from './api/http'
@@ -10,6 +10,10 @@ import { RequireSession } from './auth/RequireSession'
 import { sessionKey } from './auth/session'
 import { SignInPage } from './auth/SignInPage'
 import { SignUpPage } from './auth/SignUpPage'
+import { ChangePasswordPage } from './auth/ChangePasswordPage'
+import { HomeRedirect } from './auth/HomeRedirect'
+import { BankHomePage } from './features/bank/BankHomePage'
+import { StaffPage } from './features/bank/StaffPage'
 import { AccountingPage } from './features/accounting/AccountingPage'
 import { BusinessesPage } from './features/businesses/BusinessesPage'
 import { BusinessDocumentsPage } from './features/documents/BusinessDocumentsPage'
@@ -36,6 +40,7 @@ const queryClient = new QueryClient({
 const router = createBrowserRouter([
   { path: '/sign-in', element: <SignInPage /> },
   { path: '/sign-up', element: <SignUpPage /> },
+  { path: '/change-password', element: <ChangePasswordPage /> },
   {
     element: (
       <RequireSession>
@@ -43,7 +48,9 @@ const router = createBrowserRouter([
       </RequireSession>
     ),
     children: [
-      { index: true, element: <Navigate to="/businesses" replace /> },
+      { index: true, element: <HomeRedirect /> },
+      { path: 'bank', element: <BankHomePage /> },
+      { path: 'bank/staff', element: <StaffPage /> },
       { path: 'businesses', element: <BusinessesPage /> },
       { path: 'businesses/:businessId', element: <BusinessDocumentsPage /> },
       { path: 'businesses/:businessId/accounting', element: <AccountingPage /> },

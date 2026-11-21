@@ -6,7 +6,18 @@ export type Me = {
   name: string
   email: string
   roles: string[]
+  /** Signed in with a temporary password from the bank: nothing else works until it is replaced */
+  mustChangePassword: boolean
 }
+
+export type ChangePassword = { currentPassword: string; newPassword: string }
+
+export const STAFF_ROLES = ['ANALYST', 'MANAGER', 'ADMIN'] as const
+export const isStaff = (me: Me) => me.roles.some(role => (STAFF_ROLES as readonly string[]).includes(role))
+export const hasRole = (me: Me, role: string) => me.roles.includes(role)
+
+/** Where a user starts: their businesses, or the bank's back office. */
+export const homeOf = (me: Me) => (isStaff(me) ? '/bank' : '/businesses')
 
 export type SignIn = { email: string; password: string }
 export type SignUp = { fullName: string; email: string; password: string }
@@ -42,12 +53,14 @@ function useStartSession<T>(path: string) {
 }
 
 export const useSignIn = () => useStartSession<SignIn>('/api/v1/auth/sign-in')
+export const useChangePassword = () => useStartSession<ChangePassword>('/api/v1/me/password')
 export const useSignUp = () => useStartSession<SignUp>('/api/v1/auth/sign-up')
 
-export function useSignOut() {
+/** Signs out here; with everywhere, also ends the user's sessions on every other device. */
+export function useSignOut(everywhere = false) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: () => api<void>('/api/v1/auth/sign-out', { method: 'POST' }),
+    mutationFn: () => api<void>(everywhere ? '/api/v1/me/sign-out-everywhere' : '/api/v1/auth/sign-out', { method: 'POST' }),
     onSettled: () => {
       queryClient.clear()
       queryClient.setQueryData(sessionKey, null)
