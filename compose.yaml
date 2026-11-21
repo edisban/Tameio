@@ -77,9 +77,6 @@ services:
       TAMEIO_S3_ENDPOINT: http://storage:8333
       TAMEIO_DOCUMENT_AI_URL: http://document-ai:8090
       TAMEIO_RABBITMQ_HOST: rabbitmq
-      # Local only: the first bank administrator (must change this password at first sign-in)
-      TAMEIO_BOOTSTRAP_ADMIN_EMAIL: admin@tameio.local
-      TAMEIO_BOOTSTRAP_ADMIN_PASSWORD: tameio-admin-2026
       # Local only: demo people, businesses and a year of history (README lists the sign-ins)
       TAMEIO_DEMO_DATA: "true"
     ports:
