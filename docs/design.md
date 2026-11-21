@@ -5,7 +5,7 @@ Status: living document · Owner: edisban · Last updated: 2026-11-21
 Tameio (Greek for "till" or "treasury") is a small bank for Greek small businesses, with their books
 built in. A business holds its money in current accounts, uploads its receipts and invoices, which AI
 reads and classifies into an expense book, and borrows from the bank with the figures it has already
-verified. Bank staff work in a back office: customer accounts, the general ledger, staff and, soon, loan
+verified. Bank staff work in a back office: customer accounts, the general ledger, staff and loan
 applications.
 
 This document describes what is built, how it fits together and what comes next. Decisions with lasting
@@ -61,7 +61,7 @@ VAT and total, checks them (a valid ΑΦΜ, net plus VAT equal to the total) and
 category. The owner confirms or corrects it on a screen that shows the document beside the fields; the
 confirmed values go into the expense book, and every correction is kept as training data.
 
-**Loan application** (next). The owner applies with the amount, term and purpose; the application is
+**Loan application**. The owner applies with the amount, term and purpose; the application is
 filled in from the books and the account's history. An analyst reviews it with a simple, explained risk
 score and recommends; a manager whose approval limit covers the amount decides, and can never be the
 person who recommended. An approved loan is paid into the business's account through the ledger.
@@ -89,7 +89,7 @@ events, never each other's tables; Spring Modulith checks this in a test.
 | `documents` | Uploads, storage, reading by document AI, extracted fields, human review | Built |
 | `accounting` | The expense book, totals by month, quarter and category, CSV export | Built |
 | `banking` | Current accounts with IBANs, the double-entry ledger, the trial balance | Built |
-| `lending` | Loan applications, the review workflow, decisions, disbursement | Next |
+| `lending` | Loan applications, the review workflow, decisions, disbursement | Done |
 | `audit` | An append-only record of who did what | Planned |
 | `platform` | Security, errors, persistence, storage, validation, demo data plan (shared, not a business module) | Built |
 
@@ -178,7 +178,7 @@ decision ([ADR 0005](adr/0005-human-decides-every-credit-decision.md)).
 ## 11. Known trade-offs
 
 - **Hot internal accounts.** Every movement in or out of the bank books against one internal account
-  (`SETTLEMENT`; loans will use `LOANS`), and the ledger locks every account an entry touches. Movements
+  (`SETTLEMENT`; loans use `LOANS`), and the ledger locks every account an entry touches. Movements
   therefore queue on that one row. At this scale, a few milliseconds each, it is fine. At bank scale one
   would split the hot account into several sub-accounts booked in turn, or keep its balance as a sum of
   postings computed when needed instead of a locked running total.
@@ -197,8 +197,8 @@ decision ([ADR 0005](adr/0005-human-decides-every-credit-decision.md)).
 | 3 | Accounting: expense book, VAT by quarter, CSV | Done |
 | 4 | Bank staff, roles, approval limits, session revocation | Done |
 | 5 | Core banking: accounts, double-entry ledger, trial balance, demo data | Done |
-| 6 | Lending: applications, state machine, maker-checker, explained risk score, disbursement | Next |
-| 7 | Audit log: append-only, filled from domain events, admin search | Planned |
+| 6 | Lending: applications, state machine, maker-checker, explained risk score, disbursement | Done |
+| 7 | Audit log: append-only, filled from domain events, admin search | Next |
 | 8 | Observability and load balancing: Prometheus, Grafana, three instances behind nginx, k6 | Planned |
 
 ## 13. Later ideas
