@@ -31,7 +31,7 @@ import java.util.List;
 class DemoData implements ApplicationRunner {
 
     static final String OWNER_EMAIL = "demo@tameio.local";
-    static final String SECOND_OWNER_EMAIL = "nikos@tameio.local";
+    static final String SECOND_OWNER_EMAIL = "lucas@tameio.local";
     static final String BUSINESS_PASSWORD = "demo-password-2026";
     static final String STAFF_PASSWORD = "demo-staff-password-2026";
 
@@ -73,16 +73,18 @@ class DemoData implements ApplicationRunner {
         String businessHash = passwords.encode(BUSINESS_PASSWORD);
         String staffHash = passwords.encode(STAFF_PASSWORD);
 
-        UserAccount maria = accounts.save(UserAccount.create(OWNER_EMAIL, businessHash, "Μαρία Παπαδοπούλου", UserRole.BUSINESS));
-        UserAccount nikos = accounts.save(UserAccount.create(SECOND_OWNER_EMAIL, businessHash, "Νίκος Γεωργίου", UserRole.BUSINESS));
-        staff("analyst@tameio.local", "Ελένη Μαρκοπούλου", UserRole.ANALYST, null, staffHash);
-        staff("manager@tameio.local", "Κώστας Δημητρίου", UserRole.MANAGER, new BigDecimal("100000.00"), staffHash);
+        UserAccount emma = accounts.save(UserAccount.create(OWNER_EMAIL, businessHash, "Emma Collins", UserRole.BUSINESS));
+        UserAccount lucas = accounts.save(UserAccount.create(SECOND_OWNER_EMAIL, businessHash, "Lucas Meyer", UserRole.BUSINESS));
+        staff("analyst@tameio.local", "Sofia Rossi", UserRole.ANALYST, null, staffHash);
+        staff("manager@tameio.local", "Daniel Novak", UserRole.MANAGER, new BigDecimal("100000.00"), staffHash);
+        // The administrator sees and manages everything in the back office, and may approve any loan
+        staff("admin@tameio.local", "Olivia Grant", UserRole.ADMIN, new BigDecimal("1000000.00"), staffHash);
 
-        create(maria, List.of(
+        create(emma, List.of(
             new DemoBusiness("Καφέ Το Στέκι", DemoYear.Profile.CAFE, 11),
             new DemoBusiness("Αρτοποιία Αιγαίο", DemoYear.Profile.BAKERY, 23),
             new DemoBusiness("Studio Λευκό", DemoYear.Profile.STUDIO, 37)), end);
-        create(nikos, List.of(new DemoBusiness("Ταβέρνα Ο Γιάννης", DemoYear.Profile.TAVERNA, 41)), end);
+        create(lucas, List.of(new DemoBusiness("Ταβέρνα Ο Γιάννης", DemoYear.Profile.TAVERNA, 41)), end);
     }
 
     private void staff(String email, String name, UserRole role, BigDecimal limit, String hash) {
