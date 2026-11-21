@@ -44,7 +44,7 @@ export function SignInPage() {
   return (
     <AuthLayout title="Σύνδεση" subtitle="Συνδεθείτε για να δείτε τις επιχειρήσεις σας.">
       <form onSubmit={submit} noValidate>
-        <Stack spacing={2.5}>
+        <Stack spacing={2}>
           {signIn.isError && <Alert severity="error">{errorMessage(signIn.error)}</Alert>}
           <TextField
             label="Email"
@@ -63,7 +63,7 @@ export function SignInPage() {
             error={!!errors.password}
             helperText={errors.password?.message}
           />
-          <Button type="submit" variant="contained" size="large" disabled={isSubmitting}>
+          <Button type="submit" variant="contained" disabled={isSubmitting}>
             Σύνδεση
           </Button>
           <Typography color="text.secondary" sx={{ textAlign: 'center' }}>

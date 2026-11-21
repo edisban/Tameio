@@ -45,7 +45,7 @@ export function AccountCard({ account, selected, onSelect }: { account: BankAcco
             {frozen ? (
               <Chip size="small" label="Παγωμένος" sx={{ bgcolor: 'rgba(255,255,255,0.18)', color: '#ffffff' }} />
             ) : (
-              <Typography sx={{ fontSize: 12, opacity: 0.7, letterSpacing: '0.08em' }}>KYMA BANK</Typography>
+              <Typography sx={{ fontSize: 12, opacity: 0.7, letterSpacing: '0.08em' }}>TAMEIO</Typography>
             )}
           </Stack>
           <Box>

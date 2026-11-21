@@ -56,7 +56,7 @@ export function ChangePasswordPage() {
       }
     >
       <form onSubmit={submit} noValidate>
-        <Stack spacing={2.5}>
+        <Stack spacing={2}>
           {change.isError && <Alert severity="error">{errorMessage(change.error)}</Alert>}
           <TextField
             label="Τωρινός κωδικός"
@@ -83,7 +83,7 @@ export function ChangePasswordPage() {
             error={!!errors.repeat}
             helperText={errors.repeat?.message}
           />
-          <Button type="submit" variant="contained" size="large" disabled={isSubmitting}>
+          <Button type="submit" variant="contained" disabled={isSubmitting}>
             Αλλαγή κωδικού
           </Button>
         </Stack>

@@ -41,7 +41,7 @@ export function SignUpPage() {
   return (
     <AuthLayout title="Εγγραφή" subtitle="Δημιουργήστε λογαριασμό για την επιχείρησή σας.">
       <form onSubmit={submit} noValidate>
-        <Stack spacing={2.5}>
+        <Stack spacing={2}>
           {unexpected && <Alert severity="error">Η εγγραφή δεν ολοκληρώθηκε. Δοκιμάστε ξανά.</Alert>}
           <TextField
             label="Ονοματεπώνυμο"
@@ -67,7 +67,7 @@ export function SignUpPage() {
             error={!!errors.password}
             helperText={errors.password?.message ?? 'Τουλάχιστον 8 χαρακτήρες'}
           />
-          <Button type="submit" variant="contained" size="large" disabled={isSubmitting}>
+          <Button type="submit" variant="contained" disabled={isSubmitting}>
             Δημιουργία λογαριασμού
           </Button>
           <Typography color="text.secondary" sx={{ textAlign: 'center' }}>
