@@ -14,5 +14,7 @@ public enum EntryKind {
     /** Not booked since payments were withdrawn (ADR 0010). */
     SEPA_SETTLEMENT,
     /** Not booked since payments were withdrawn (ADR 0010). */
-    SEPA_RETURN
+    SEPA_RETURN,
+    /** An approved loan paid into the borrower's account, from the bank's LOANS account. */
+    LOAN_DISBURSEMENT
 }
