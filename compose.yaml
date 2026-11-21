@@ -39,9 +39,10 @@ services:
       - storage-data:/data
       - ./infra/seaweedfs/s3.json:/etc/seaweedfs/s3.json:ro
     healthcheck:
-      # Ready means able to store a file, not only answering: /healthz is up in seconds, but the first volume to
-      # write to takes about 15 s more. Asking the master for a file id succeeds only once one is there.
-      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8333/healthz && wget -q -O /dev/null http://127.0.0.1:9333/dir/assign"]
+      # Ready means able to store a file, not only answering: /healthz is up in seconds, but volumes to write to
+      # come later, and the bucket's own collection (tameio-documents, the backend's bucket) gets its volumes only
+      # on its first file, which then takes seconds under load. Asking for a file id in it makes them now.
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8333/healthz && wget -q -O /dev/null 'http://127.0.0.1:9333/dir/assign?collection=tameio-documents'"]
       interval: 5s
       timeout: 3s
       retries: 30
