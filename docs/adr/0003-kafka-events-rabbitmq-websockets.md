@@ -1,6 +1,9 @@
 # 0003. Kafka for domain events, RabbitMQ for live updates
 
-Status: accepted · 2026-11-16
+Status: superseded by [0008](0008-rabbitmq-work-queue-for-document-reading.md) · 2026-11-16
+
+> Kafka was never introduced: the only work that leaves the process is document reading, and a RabbitMQ
+> work queue fed by an outbox does it (ADR 0008). Live updates over WebSocket are a later idea.
 
 ## Context
 

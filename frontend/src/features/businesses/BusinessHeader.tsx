@@ -3,9 +3,10 @@ import { Link as RouterLink } from 'react-router'
 import { colourFor, initials } from '../../app/theme'
 import { useBusiness } from './api'
 
-export type BusinessSection = 'documents' | 'accounting'
+export type BusinessSection = 'accounts' | 'documents' | 'accounting'
 
 const sections: { value: BusinessSection; label: string; path: string }[] = [
+  { value: 'accounts', label: 'Λογαριασμοί', path: '/accounts' },
   { value: 'documents', label: 'Παραστατικά', path: '' },
   { value: 'accounting', label: 'Λογιστικά', path: '/accounting' },
 ]

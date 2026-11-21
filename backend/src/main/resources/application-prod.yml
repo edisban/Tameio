@@ -23,6 +23,8 @@ tameio:
     create-bucket: false
   document-ai:
     url: ${TAMEIO_DOCUMENT_AI_URL}
+  banking:
+    demo-deposits: false
 
 logging:
   structured:

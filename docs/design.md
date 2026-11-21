@@ -1,264 +1,215 @@
 # Tameio: design
 
-Status: draft · Owner: edisban · Last updated: 2026-11-16
+Status: living document · Owner: edisban · Last updated: 2026-11-21
 
-Tameio (Greek for "till" or "treasury") is a finance platform for Greek small businesses with a lending
-service for banks built on top. A business uses it every day to keep its books: it uploads receipts and
-invoices, which AI reads and classifies, and it stays in sync with myDATA, the tax authority's electronic
-books. When the business needs a loan, it applies with that same verified data in one step, and the bank
-reviews the application with AI assistance and a human decision.
+Tameio (Greek for "till" or "treasury") is a small bank for Greek small businesses, with their books
+built in. A business holds its money in current accounts, uploads its receipts and invoices, which AI
+reads and classifies into an expense book, and borrows from the bank with the figures it has already
+verified. Bank staff work in a back office: customer accounts, the general ledger, staff and, soon, loan
+applications.
 
-This document describes what we are building, how it fits together and in what order. Decisions with
-lasting consequences are recorded as ADRs in [adr/](adr/).
+This document describes what is built, how it fits together and what comes next. Decisions with lasting
+consequences are recorded as ADRs in [adr/](adr/).
 
-> Tameio is a portfolio project. It runs against the myDATA test environment, with synthetic and public
-> data and a fictional bank. It is not financial or accounting advice and does not handle real customers.
+> Tameio is a portfolio project. Every person, business, account movement, document and loan in it is
+> invented by the demo data loader. It is not a real bank and holds no real money.
 
 ## 1. Problem
 
 Small businesses are the large majority of Greek companies, yet two everyday jobs are slow for them:
 
-- **Bookkeeping.** Every received invoice must be recorded and given an expense classification in myDATA.
-  Owners and their accountants do this by hand, hundreds of documents a month.
+- **Bookkeeping.** Every received invoice must be recorded and given an expense category. Owners and
+  their accountants do this by hand, hundreds of documents a month.
 - **Borrowing.** A loan application means gathering documents, retyping figures and waiting weeks, often
-  without knowing where the application stands or why it was declined. For a bank, a small loan costs
-  almost as much staff time to assess as a large one, so small businesses are often underserved.
+  without knowing where the application stands. For a bank, a small loan costs almost as much staff time
+  to assess as a large one, so small businesses are often underserved.
 
-Both problems come down to the same thing: financial documents that people read and retype by hand, and
-figures that are hard to trust without checking them against an official source.
+Both come down to the same thing: figures that people retype by hand and that are hard to trust.
 
 ## 2. Goals and non-goals
 
 Goals:
 
 1. Read business documents (PDFs and photos) and turn them into checked, structured data.
-2. Keep a business's books in sync with myDATA and suggest the expense classification for each invoice.
-3. Let a business apply for a loan with data it has already verified, and follow the application live.
-4. Give bank staff one place to assess an application: the documents, a comparison with myDATA, an
-   explained risk score, fraud checks and an AI summary, with a human making every decision.
-5. Build it the way large companies build such systems, and show the engineering behind each AI model:
-   a baseline, a measured improvement, and monitoring once it runs.
+2. Keep a business's expense book and VAT from the documents it confirms.
+3. Hold the business's money on a ledger that never loses or invents a cent.
+4. Let a business apply for a loan with data it has already verified; give bank staff one place to assess
+   it, with an explained risk score and a person making every decision.
+5. Show the engineering: tests at every level, decisions written down, and failure handled on purpose.
 
 Non-goals:
 
-- Being a certified e-invoicing provider, a real bank, or a replacement for an accountant.
-- Core banking (accounts, payments, loan servicing after approval). It is mocked where needed.
-- Real personal or banking data. Only synthetic data, public datasets and the founder's own documents.
+- Being a real bank, a certified e-invoicing provider, or a replacement for an accountant.
+- Real people, real money or real documents: all data comes from the demo data loader.
+- Payments between accounts or to other banks: money arrives as demo deposits and the demo history.
 
 ## 3. Users and roles
 
 | Role | Side | Can do |
 | --- | --- | --- |
-| Business owner | Business | Upload documents, review classifications, issue invoices, apply for loans |
-| Accountant | Business | Everything above for each business that invites them |
-| Credit analyst | Bank | Review applications, request documents, recommend a decision |
-| Credit manager | Bank | Approve or decline; second approval above the analyst's limit |
-| Administrator | Bank | Users and roles, approval limits, AI model versions, audit log |
+| Business owner | Business | Open accounts, upload and confirm documents, see the books, apply for loans |
+| Credit analyst | Bank | See customer accounts; review applications and recommend a decision |
+| Credit manager | Bank | Freeze accounts; decide applications up to their approval limit |
+| Administrator | Bank | Everything in the back office: staff, roles, approval limits, the general ledger, the audit log |
 
-Every business is a separate tenant: its data is never visible to another business. Bank staff see only
-applications submitted to the bank, never a business's day-to-day books.
+Every business is a separate tenant: its data is never visible to another business.
 
 ## 4. Key journeys
 
-**Daily bookkeeping.** The owner photographs a receipt. Document AI finds the issuer, VAT number (ΑΦΜ),
-date, totals and QR code, reads them, and checks them: a valid ΑΦΜ, net plus VAT equal to the total. The
-document is matched to the invoice in myDATA through its MARK number. The expense classifier suggests a
-classification; the owner or accountant accepts or corrects it, and Tameio sends it to myDATA. Every
-correction becomes training data.
+**Daily bookkeeping.** The owner uploads a receipt. Document AI reads the issuer's ΑΦΜ, the date, net,
+VAT and total, checks them (a valid ΑΦΜ, net plus VAT equal to the total) and suggests an expense
+category. The owner confirms or corrects it on a screen that shows the document beside the fields; the
+confirmed values go into the expense book, and every correction is kept as training data.
 
-**Loan application.** The owner presses "Apply with my data": the application is filled from the books
-and myDATA, and the owner adds the purpose, amount and any extra documents. Identity is verified from a
-photo of the ID card. A voice assistant answers questions and helps fill in what is missing. The owner
-follows the application's progress live.
-
-**Assessment and decision.** The analyst opens the case: documents with what the AI read drawn over them,
-declared figures next to myDATA's, a risk score with the factors behind it, fraud checks and an AI summary
-that cites its sources. The analyst recommends a decision; above the approval limit a manager must approve
-as well (maker-checker). Every view and action is written to the audit log.
+**Loan application** (next). The owner applies with the amount, term and purpose; the application is
+filled in from the books and the account's history. An analyst reviews it with a simple, explained risk
+score and recommends; a manager whose approval limit covers the amount decides, and can never be the
+person who recommended. An approved loan is paid into the business's account through the ledger.
 
 ## 5. Architecture
 
 ```mermaid
 flowchart LR
-    W["React web app<br/>business and bank"] --> GW["API gateway"]
-    GW --> APP["Tameio core<br/>Spring Boot modular monolith"]
-    APP --> PG[("PostgreSQL<br/>+ pgvector")]
+    W["React app<br/>business and back office"] -- "REST, session cookie" --> APP["Tameio core<br/>Spring Boot modular monolith"]
+    APP --> PG[("PostgreSQL<br/>ledger · outbox")]
     APP --> S3[("S3 storage<br/>documents")]
-    APP --> R[("Redis")]
-    APP <--> K{{"Kafka<br/>domain events"}}
-    APP <--> MQ{{"RabbitMQ<br/>WebSocket relay"}}
-    K <--> ML["ML services (Python)<br/>document AI · classifier<br/>risk · anomaly"]
-    APP --> LLM["LLM serving<br/>local open model"]
-    APP --> AADE["myDATA<br/>test environment"]
-    APP -. "sign-in, session cookie" .- W
-    APP -. telemetry .-> OBS["OpenTelemetry → Prometheus,<br/>Grafana, Tempo, Loki"]
+    APP <--> MQ{{"RabbitMQ<br/>document reading queue"}}
+    APP -- "POST /v1/read" --> ML["Document AI (Python)<br/>OCR · fields · classifier"]
 ```
 
 ### 5.1 Core: a modular monolith
 
-The core is one Spring Boot application split into modules with clear boundaries
-([ADR 0001](adr/0001-modular-monolith-first.md)). Modules talk through their public interfaces and domain
-events, never each other's tables, so any of them can become a separate service later if load or team
-structure calls for it.
+One Spring Boot application split into modules with clear boundaries
+([ADR 0001](adr/0001-modular-monolith-first.md)). Modules talk through their public types and domain
+events, never each other's tables; Spring Modulith checks this in a test.
 
-| Module | Owns |
-| --- | --- |
-| `identity` | User accounts and sign-in, tenants, memberships and roles |
-| `documents` | Uploads, storage, processing status, extracted fields and human review |
-| `accounting` | Invoices, expense classifications, the ledger, VAT summaries, cash-flow forecast |
-| `mydata` | The myDATA integration: fetching, sending, matching, credentials, retries |
-| `lending` | Applications, the workflow, assessments, approvals |
-| `assistant` | The customer voice assistant and the analyst assistant: retrieval and tool calling |
-| `notifications` | Live updates to users over WebSocket |
-| `audit` | An append-only record of who saw and did what |
+| Module | Owns | Status |
+| --- | --- | --- |
+| `identity` | User accounts and sign-in, staff and approval limits, businesses and memberships | Built |
+| `documents` | Uploads, storage, reading by document AI, extracted fields, human review | Built |
+| `accounting` | The expense book, totals by month, quarter and category, CSV export | Built |
+| `banking` | Current accounts with IBANs, the double-entry ledger, the trial balance | Built |
+| `lending` | Loan applications, the review workflow, decisions, disbursement | Next |
+| `audit` | An append-only record of who did what | Planned |
+| `platform` | Security, errors, persistence, storage, validation, demo data plan (shared, not a business module) | Built |
 
-### 5.2 ML services
+### 5.2 Document AI
 
-Models run in Python services behind small FastAPI APIs ([ADR 0002](adr/0002-java-core-python-ml.md)). The
-core never calls a model inline for long work: it publishes an event (`document.uploaded`) and the ML
-service answers with another (`document.extracted`). Short, user-facing calls (a classification
-suggestion) go over HTTP with a timeout and a fallback.
+Models run in a Python service behind a small FastAPI API ([ADR 0002](adr/0002-java-core-python-ml.md)).
+The core never calls it inside a user's request: an upload becomes a job on a RabbitMQ queue, and a
+consumer in the core calls the service over HTTP with a timeout
+([ADR 0008](adr/0008-rabbitmq-work-queue-for-document-reading.md)).
 
 ### 5.3 Messaging
 
-- **Kafka** carries domain events between modules and the ML services. Events are durable and replayable,
-  so a model can be re-run over past documents ([ADR 0003](adr/0003-kafka-events-rabbitmq-websockets.md)).
-- **RabbitMQ** relays STOMP WebSocket messages, so live updates reach a user whichever instance they are
-  connected to. It also carries work queues: each upload becomes a reading job, fed from a transactional
-  outbox and retried with back-off before it is dead-lettered
-  ([ADR 0008](adr/0008-rabbitmq-work-queue-for-document-reading.md)).
+- **In-process domain events** connect modules: `DocumentReviewed` from documents fills the expense book
+  in accounting through an asynchronous, durable module listener.
+- **RabbitMQ** carries the one piece of work that leaves the process: reading documents. Jobs come from a
+  transactional outbox (Spring Modulith's event publication registry), so a job is sent only after the
+  upload commits and never lost; failures are retried with back-off and then dead-lettered.
+- **No Kafka.** It was planned for replayable events ([ADR 0003](adr/0003-kafka-events-rabbitmq-websockets.md),
+  superseded); nothing in the app needs replay yet.
 
-### 5.4 Running at scale
+### 5.4 Several instances
 
-The core is stateless: identity comes from tokens, shared state lives in PostgreSQL and Redis, and
-WebSocket fan-out goes through RabbitMQ. It therefore runs as several identical instances behind a load
-balancer that routes only to instances whose Actuator health and readiness checks pass. In Kubernetes,
-replicas scale with load. k6 load tests show the effect in Grafana.
+The core keeps no session state: identity comes from signed tokens, and everything shared lives in
+PostgreSQL and RabbitMQ. Running several instances behind a load balancer is the subject of the
+observability and load-balancing phase (section 12), including what breaks and how it is handled.
 
-## 6. Data model (first cut)
+## 6. Data model
 
-| Entity | Notes |
-| --- | --- |
-| `tenant` | A business, keyed by its ΑΦΜ |
-| `membership` | A user's role in a tenant or in the bank |
-| `document` | File in S3 storage, type, processing status, page count |
-| `extracted_field` | Name, value, confidence, bounding box, source (model or person) |
-| `invoice` | Issuer, recipient, dates, net, VAT, total, MARK, origin (myDATA or document) |
-| `expense_classification` | Suggested and final category, model version, who confirmed it |
-| `loan_application` | Amount, term, purpose, status, workflow state |
-| `credit_assessment` | Score, model version, factor contributions, created at |
-| `risk_alert` | Type, severity, evidence, status |
-| `approval` | Who decided what, at which level, with which comment |
-| `audit_event` | Actor, action, subject, time; append-only |
-| `model_version` | Model name, version, metrics, when it went live |
+| Table | Module | Notes |
+| --- | --- | --- |
+| `user_account` | identity | Email, Argon2id hash, role, session version, approval limit |
+| `business`, `membership` | identity | A business keyed by its ΑΦΜ, and who acts for it |
+| `document`, `document_check`, `document_correction` | documents | The file's details, what was read, checks, corrections |
+| `expense` | accounting | One entry per confirmed document |
+| `bank_account` | banking | Customer and internal accounts, balance, status |
+| `journal_entry`, `posting` | banking | Append-only double-entry ledger; every entry sums to zero |
+| `event_publication` | platform | The outbox |
 
-Every business table carries `tenant_id`, and PostgreSQL row-level security enforces it as a second line
-of defence behind the application's own checks. Money is `numeric` in the database and `BigDecimal` in
-Java.
+Money is `numeric` in the database and `BigDecimal` in Java; schema changes are Flyway migrations, and an
+applied migration is never edited.
 
 ## 7. Domain events
 
 | Event | Published by | Consumed by |
 | --- | --- | --- |
-| `document.uploaded` | documents | document AI |
-| `document.extracted` | document AI | documents, accounting |
-| `invoice.recorded` | accounting | classifier, anomaly detection, mydata |
-| `classification.confirmed` | accounting | mydata, training data store |
-| `mydata.synced` | mydata | accounting |
-| `application.submitted` | lending | risk, anomaly detection, notifications |
-| `assessment.completed` | risk | lending, notifications |
-| `decision.made` | lending | notifications, audit |
+| `DocumentUploaded` | documents | the reading queue (RabbitMQ, through the outbox) |
+| `DocumentReadRequested` | documents | the reading queue |
+| `DocumentReviewed` | documents | accounting |
+| `AccountTransactionBooked` | banking | nothing yet; lending and the overview will |
+| `DemoBusinessReady` | identity | banking and accounting, to build a demo business's year |
 
 ## 8. AI and ML
 
-Each model starts from a simple baseline, and replaces it only if it is measurably better on a held-out
-test set. Every model has a model card: data, metrics, known limits.
+Each model starts from a simple, measured baseline.
 
-| Capability | Approach | Baseline | Measured by |
-| --- | --- | --- | --- |
-| Document layout | YOLO fine-tuned to find issuer, ΑΦΜ, date, line items, totals, QR, signature, stamp | Fixed regions per template | mAP@0.5 |
-| Reading fields | OCR on each detected region, then validation rules | OCR on the whole page | Field-level accuracy |
-| End-to-end extraction | LayoutLMv3 or Donut, compared with YOLO + OCR | — | Field accuracy, latency |
-| Expense classification | Greek BERT fine-tuned on confirmed classifications | TF-IDF + logistic regression | Macro F1 |
-| Identity documents | YOLO for ID card fields, OCR, consistency checks | — | Field accuracy |
-| Credit risk | Gradient boosting with SHAP explanations | Logistic regression | ROC-AUC, calibration, fairness by region and sector |
-| Fraud and AML | Isolation Forest on invoices; payment-graph features for circular flows | Rules | Precision at top-k |
-| Cash-flow forecast | Gradient boosting on lagged features | Seasonal naive | MAPE |
-| Assistants | Local open LLM with retrieval (pgvector) and tool calling, PII redacted first | Larger hosted model | Answer accuracy on a golden set, cost, latency |
-| Voice | Speech-to-text and text-to-speech in Greek | — | Word error rate |
+| Capability | Approach | Measured by |
+| --- | --- | --- |
+| Reading fields | Tesseract OCR (Greek), then rules with a confidence per field and consistency checks | Field-level tests on real OCR |
+| Expense classification | TF-IDF + logistic regression | Macro F1 on shops never seen in training; CI fails if it drops |
+| Credit risk (next) | A few explained rules or a logistic regression on the demo data | Every factor shown to the analyst |
 
-MLOps:
+Credit scoring is a high-risk use under the EU AI Act: the score is explained, and a person makes every
+decision ([ADR 0005](adr/0005-human-decides-every-credit-decision.md)).
 
-- Experiments and the model registry in MLflow; training data versioned with DVC.
-- Corrections from people (fields, classifications) are stored as labelled data and feed retraining.
-- Low-confidence documents go to a review queue first (active learning).
-- A new model version goes live only if CI shows it is at least as good as the current one on the test set.
-- Input drift and live accuracy are monitored and shown in Grafana.
-- Models are exported to ONNX and quantised where that keeps accuracy, so they run fast on CPU.
+## 9. Security
 
-Responsible AI: credit scoring is a high-risk use under the EU AI Act. Tameio therefore explains every
-score, keeps a person in charge of every decision, logs inputs, outputs and model versions, and checks
-the credit model for unequal outcomes between groups ([ADR 0005](adr/0005-human-decides-every-credit-decision.md)).
+- Sign-in inside the core: Argon2id password hashes, a signed session token in an HttpOnly cookie, CSRF
+  protection and account lock-out ([ADR 0007](adr/0007-sign-in-inside-the-core.md)).
+- Every token carries the account's session version: disabling an account, resetting its password or
+  changing its role ends its sessions at once.
+- Staff accounts are created by an administrator with a temporary password that must be replaced.
+- Tenant isolation: every query checks membership, and another business's data answers 404.
+- The ledger is append-only and balanced by database triggers, not only by code.
 
-## 9. myDATA integration
-
-- Runs against the myDATA test environment only, with the test credentials of the business.
-- Operations: fetch invoices issued to the business, send expense and income classifications, issue
-  invoices, look up an invoice by MARK.
-- Credentials are encrypted at rest and never logged. Calls go through Resilience4j (timeouts, retries
-  with backoff, circuit breaker) and are idempotent, so a retry never sends an invoice twice.
-- Requests and responses are XML, validated against the published schemas.
-
-## 10. Security and compliance
-
-- Sign-in inside the core: Argon2id password hashes, a signed session token in an HttpOnly cookie, CSRF protection and account lock-out ([ADR 0007](adr/0007-sign-in-inside-the-core.md)).
-- Tenant isolation in the application and in the database (row-level security).
-- Secrets in Vault; documents encrypted at rest in S3 storage; TLS everywhere outside local development.
-- An append-only audit log for every view of a case and every decision.
-- Personal data is redacted before any text reaches an LLM; the LLM runs locally, so no customer data
-  leaves the platform.
-- Data export and deletion on request (GDPR).
-- Dependencies and images scanned in CI (Trivy, OWASP); code quality in SonarQube.
-
-## 11. Observability
-
-OpenTelemetry instruments the core and the ML services. Metrics go to Prometheus, traces to Tempo and
-logs to Loki, all in Grafana. A single document can be followed from upload through Kafka and the ML
-services to the analyst's screen. Dashboards cover request rates and latency, queue lag, myDATA errors and
-model health.
-
-## 12. Testing
+## 10. Testing
 
 | Level | Tools |
 | --- | --- |
-| Unit | JUnit 5, pytest |
-| Integration | Testcontainers (PostgreSQL, S3 storage, Kafka, RabbitMQ) |
-| Contracts between core and ML services | Spring Cloud Contract or Pact |
-| End to end | Playwright |
-| Load | k6 |
-| Models | Evaluation on held-out sets as a CI quality gate |
+| Unit and API | JUnit 5, MockMvc, Testcontainers (PostgreSQL, RabbitMQ, S3 storage), JaCoCo (80% floor) |
+| Module boundaries | Spring Modulith verification |
+| Frontend components | Vitest, Testing Library, MSW |
+| End to end | Playwright against the whole stack |
+| Document AI | pytest with real OCR; the classifier's macro F1 as a quality gate |
+| Load (planned) | k6 |
 
-## 13. Delivery plan
+## 11. Known trade-offs
 
-Each phase ends with something that runs and can be demonstrated.
+- **Hot internal accounts.** Every movement in or out of the bank books against one internal account
+  (`SETTLEMENT`; loans will use `LOANS`), and the ledger locks every account an entry touches. Movements
+  therefore queue on that one row. At this scale, a few milliseconds each, it is fine. At bank scale one
+  would split the hot account into several sub-accounts booked in turn, or keep its balance as a sum of
+  postings computed when needed instead of a locked running total.
+- **One database.** The ledger, the outbox and the books share one PostgreSQL. That keeps every booking
+  and its event in one transaction; splitting it would need a distributed protocol the app does not need.
+- **Polling, not push.** Pages ask again while a document is being read. A WebSocket channel would be
+  nicer and is not worth its moving parts yet.
 
-| Phase | Scope | Done when |
+## 12. Delivery plan
+
+| Phase | Scope | Status |
 | --- | --- | --- |
-| 0 | This design, first ADRs, repository and CI skeleton | Reviewed and pushed |
-| 1 | Core skeleton: sign-in, tenants, document upload to S3 storage, React app | A business signs in and uploads a document |
-| 2 | Document AI v1: OCR, validation rules, baseline expense classifier | Fields and a classification appear for a receipt |
-| 3 | YOLO fine-tuning and the review screen with boxes over the document | mAP reported; corrections saved as training data |
-| 4 | myDATA: fetch, classify, issue, match by MARK, with Resilience4j | Round trip against the test environment |
-| 5 | Lending: applications, workflow, maker-checker, back office | An application goes from submission to decision |
-| 6 | Risk: credit model with SHAP, fraud checks, model cards | Scores with explanations in the case file |
-| 7 | Scale: Kafka, RabbitMQ relay, gateway, several instances, OpenTelemetry, Grafana, k6 | Load test results on a dashboard |
-| 8 | Assistants: retrieval, tool calling, voice, PII redaction | Customer and analyst assistants work end to end |
-| 9 | MLOps: MLflow, retraining from corrections, drift monitoring, quality gates | A retrained model is promoted by CI |
-| 10 | Kubernetes with Helm, security scanning, SonarQube | The stack runs on a local cluster |
+| 0 | Design, ADRs, repository and CI | Done |
+| 1 | Sign-in, businesses, document upload to S3 storage, React app | Done |
+| 2 | Document AI: OCR, rules, classifier, reading queue, review screen | Done |
+| 3 | Accounting: expense book, VAT by quarter, CSV | Done |
+| 4 | Bank staff, roles, approval limits, session revocation | Done |
+| 5 | Core banking: accounts, double-entry ledger, trial balance, demo data | Done |
+| 6 | Lending: applications, state machine, maker-checker, explained risk score, disbursement | Next |
+| 7 | Audit log: append-only, filled from domain events, admin search | Planned |
+| 8 | Observability and load balancing: Prometheus, Grafana, three instances behind nginx, k6 | Planned |
 
-## 14. Open questions
+## 13. Later ideas
 
-- Exact myDATA endpoints, schemas and limits: to confirm against the AADE documentation before phase 4.
-- Which open LLM runs well enough in Greek on available hardware (CPU or a single GPU).
-- Labelled Greek receipts and invoices for YOLO: how many we can collect and annotate ourselves.
-- Public credit and fraud datasets to use, and how to adapt them to small Greek businesses.
+Not planned for now; recorded so the direction is clear.
+
+- Payments: transfers between accounts and SEPA credit transfers to other banks.
+- myDATA (the tax authority's electronic books): fetching, classifying and issuing invoices.
+- Document AI: YOLO fine-tuning for field boxes, LayoutLM or Donut, a Greek BERT classifier, MLflow and
+  DVC for experiments and data.
+- Assistants: a local LLM with retrieval, voice in Greek.
+- Risk: gradient boosting with SHAP, fraud detection on a payment graph, a cash-flow forecast.
+- Platform: Kafka for replayable events, Redis, Vault for secrets, Kubernetes with Helm, contract tests
+  with Pact, WebSocket notifications.

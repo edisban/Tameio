@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /** Registering businesses and answering "which businesses can this user act for, and as what?". */
@@ -43,6 +44,11 @@ public class BusinessService {
         return memberships.findWithBusiness(user.id(), businessId)
             .map(BusinessView::of)
             .orElseThrow(() -> new NotFoundException("Business not found."));
+    }
+
+    /** For other modules: the registered name of a business, which is the holder's name on its bank accounts. */
+    public Optional<String> registeredName(UUID businessId) {
+        return businesses.findById(businessId).map(Business::getName);
     }
 
     /**

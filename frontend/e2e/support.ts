@@ -35,3 +35,47 @@ export async function registerBusiness(page: Page, name: string): Promise<string
   await expect(page.getByText(`ΑΦΜ ${afm}`)).toBeVisible()
   return afm
 }
+
+/**
+ * The first administrator comes from the stack's settings (compose.yaml) with a temporary password.
+ * The first run replaces it with E2E_ADMIN_PASSWORD; later runs sign in with that.
+ */
+const ADMIN_EMAIL = 'admin@tameio.local'
+const BOOTSTRAP_PASSWORD = 'tameio-admin-2026'
+const E2E_ADMIN_PASSWORD = 'e2e-admin-password-2026'
+
+export async function signIn(page: Page, email: string, password: string) {
+  await page.goto('/sign-in')
+  await page.getByLabel('Email').fill(email)
+  await page.getByLabel('Κωδικός').fill(password)
+  await page.getByRole('button', { name: 'Σύνδεση' }).click()
+}
+
+export async function changePassword(page: Page, current: string, next: string) {
+  await expect(page).toHaveURL(/\/change-password$/)
+  await page.getByLabel('Τωρινός κωδικός').fill(current)
+  await page.getByLabel('Νέος κωδικός', { exact: true }).fill(next)
+  await page.getByLabel('Νέος κωδικός ξανά').fill(next)
+  await page.getByRole('button', { name: 'Αλλαγή κωδικού' }).click()
+}
+
+/**
+ * Signs in as the administrator. On a fresh stack, tests running side by side may all find the
+ * temporary password: one replaces it, and the others then sign in with the replacement.
+ */
+export async function signInAsAdmin(page: Page) {
+  const wrong = page.getByText('Λάθος email ή κωδικός.')
+  const landed = page.getByRole('heading', { name: 'Αιτήσεις δανείων' })
+  const mustChange = page.getByRole('button', { name: 'Αλλαγή κωδικού' })
+  for (const password of [E2E_ADMIN_PASSWORD, BOOTSTRAP_PASSWORD, E2E_ADMIN_PASSWORD]) {
+    await signIn(page, ADMIN_EMAIL, password)
+    await expect(wrong.or(landed).or(mustChange)).toBeVisible()
+    if (await landed.isVisible()) return
+    if (await mustChange.isVisible()) {
+      await changePassword(page, password, E2E_ADMIN_PASSWORD)
+      await expect(wrong.or(landed).or(page.getByText('Ο τωρινός κωδικός είναι λάθος.'))).toBeVisible()
+      if (await landed.isVisible()) return
+    }
+  }
+  throw new Error('Could not sign in as the administrator')
+}
