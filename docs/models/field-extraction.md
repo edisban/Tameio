@@ -9,6 +9,7 @@ text, and whether a small LLM does it better than the rules the service already 
 | In production | The **baseline** (rules + TF-IDF). The LLM variants are measured, not deployed. |
 | Code | `ml/document-ai/extraction/`, dataset in `ml/document-ai/training/dataset.py` |
 | Results | [`ml/document-ai/results/field-extraction/comparison.md`](../../ml/document-ai/results/field-extraction/comparison.md) and `metrics.json` |
+| Errors | [`ml/document-ai/results/field-extraction/errors.md`](../../ml/document-ai/results/field-extraction/errors.md), from `python -m extraction.error_analysis` |
 
 ## Data
 
@@ -67,6 +68,24 @@ decides how often a person has nothing to correct.
 - **Fine-tuned**: its row is added by the Colab notebook, which measures it on the same golden set and
   writes it into `metrics.json`. It needs a GPU: on the laptop CPU one training step took 135 s, so the
   two epochs would take about four hours, against about ten minutes on a T4.
+
+## What the mistakes show
+
+`python -m extraction.error_analysis` reads the baseline's answer for each golden receipt and breaks the
+mistakes down with pandas ([errors.md](../../ml/document-ai/results/field-extraction/errors.md)).
+
+- **The ΑΦΜ and the date fail safe.** All 12 ΑΦΜ and all 18 date mistakes are fields found empty, never a wrong
+  value. In every one the OCR read a digit as a letter that looks like it: `2Ο26` with a Greek Ο, `30-0S-2Ο25`,
+  `962692S45`. The rules look for digits, find none and leave the field for the person on the review screen.
+- **The category is where wrong values come from.** Its 36 mistakes are all wrong values, and 32 of them are on
+  receipts that print only a generic line such as «ΔΙΑΦΟΡΑ ΕΙΔΗ», where the shop's name is the only clue: the
+  category is wrong on 47% of those against 2% of itemised receipts. The usual confusions are professional
+  services taken for office supplies and groceries and restaurants for each other.
+- **What to fix first:** turn letters that look like digits back into digits (Ο→0, S→5, Ι→1, Β→8) inside tokens
+  that are mostly digits, before the ΑΦΜ and date rules run. Tried on the golden set, it finds all 30 missing
+  values and changes none that was right; the ΑΦΜ check digit still refuses a number read wrong. After that,
+  the classifier needs more shops per category, or the review screen should ask for the category when the
+  receipt has no item lines.
 
 ## Limits
 
