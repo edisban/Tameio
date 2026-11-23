@@ -145,10 +145,15 @@ ways: the rules, `Qwen2.5-0.5B-Instruct` with a prompt, and the same model fine-
 | Variant | ΑΦΜ | Date | Net | VAT | Total | Category | All 6 | Invalid JSON | Latency p50 |
 |---|---|---|---|---|---|---|---|---|---|
 | rules (baseline) | 95.1% | 92.7% | 96.8% | 97.6% | 97.2% | 85.4% | 69.2% | 0.0% | 2 ms |
-| prompted LLM | 67.2% | 43.3% | 0.0% | 47.0% | 23.9% | 7.7% | 0.0% | 32.8% | 12,414 ms |
+| prompted LLM | 66.8% | 43.3% | 0.0% | 46.6% | 24.3% | 7.7% | 0.0% | 33.2% | 1,930 ms (GPU) |
+| fine-tuned LLM | 98.8% | 97.2% | 90.7% | 98.0% | 98.0% | 44.5% | 37.2% | 1.2% | 1,952 ms (GPU) |
 
-The method, the data and an analysis of the mistakes are in the [model card](docs/models/field-extraction.md);
-the fine-tuning runs on a free Colab GPU ([notebook](ml/document-ai/notebooks/field_extraction_lora.ipynb)).
+Fine-tuning taught the model the format, and it reads the ΑΦΜ, date, VAT and total better than the rules.
+It gets the category of shops it has not seen and the net amount (a subtraction) wrong too often, so all six
+fields are right less often than with the rules, which also run a thousand times faster on a CPU. The app
+uses the rules. The method, the data and an analysis of the mistakes are in the
+[model card](docs/models/field-extraction.md); the fine-tuning ran on a free Colab GPU
+([notebook](ml/document-ai/notebooks/field_extraction_lora.ipynb)).
 
 ## Tests
 
