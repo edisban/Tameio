@@ -68,6 +68,20 @@ describe('SignInPage', () => {
     expect(screen.getByText('Γράψτε τον κωδικό σας')).toBeInTheDocument()
   })
 
+  it('shows the password when asked, to check what was typed', async () => {
+    signedOut()
+    const { user } = renderWithProviders(<SignInPage />, { path: '/sign-in', route: '/sign-in' })
+    const password = await screen.findByLabelText('Κωδικός')
+    await user.type(password, 'αναλψστ123')
+
+    await user.click(screen.getByRole('button', { name: 'Εμφάνιση κωδικού' }))
+
+    expect(password).toHaveAttribute('type', 'text')
+    expect(password).toHaveValue('αναλψστ123')
+    await user.click(screen.getByRole('button', { name: 'Απόκρυψη κωδικού' }))
+    expect(password).toHaveAttribute('type', 'password')
+  })
+
   it('sends the CSRF token from its cookie with the sign-in', async () => {
     signedOut()
     document.cookie = 'tameio_xsrf=token-123; path=/'

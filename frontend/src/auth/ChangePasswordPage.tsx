@@ -1,10 +1,11 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Alert, Button, Stack, TextField } from '@mui/material'
+import { Alert, Button, Stack } from '@mui/material'
 import { useForm } from 'react-hook-form'
 import { Navigate, useNavigate } from 'react-router'
 import { z } from 'zod'
 import { ApiError } from '../api/http'
 import { AuthLayout } from './AuthLayout'
+import { PasswordField } from './PasswordField'
 import { homeOf, useChangePassword, useSession } from './session'
 
 const schema = z
@@ -58,26 +59,23 @@ export function ChangePasswordPage() {
       <form onSubmit={submit} noValidate>
         <Stack spacing={2}>
           {change.isError && <Alert severity="error">{errorMessage(change.error)}</Alert>}
-          <TextField
+          <PasswordField
             label="Τωρινός κωδικός"
-            type="password"
             autoComplete="current-password"
             autoFocus
             {...form.register('currentPassword')}
             error={!!errors.currentPassword}
             helperText={errors.currentPassword?.message}
           />
-          <TextField
+          <PasswordField
             label="Νέος κωδικός"
-            type="password"
             autoComplete="new-password"
             {...form.register('newPassword')}
             error={!!errors.newPassword}
             helperText={errors.newPassword?.message ?? 'Τουλάχιστον 12 χαρακτήρες. Μια φράση είναι καλή επιλογή.'}
           />
-          <TextField
+          <PasswordField
             label="Νέος κωδικός ξανά"
-            type="password"
             autoComplete="new-password"
             {...form.register('repeat')}
             error={!!errors.repeat}

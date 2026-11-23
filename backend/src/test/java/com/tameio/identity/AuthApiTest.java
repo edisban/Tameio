@@ -186,4 +186,20 @@ class AuthApiTest {
 
         assertThat(mvc.get().uri("/api/v1/me").cookie(forged)).hasStatus(HttpStatus.UNAUTHORIZED);
     }
+
+    @Test
+    void signsInWhileTheBrowserStillHoldsAnEndedSession() {
+        String email = freshEmail();
+        signUp(email, PASSWORD);
+        // What a browser keeps after the account behind its session is gone, for example after a database reset
+        Cookie ended = new Cookie(SessionCookies.SESSION, "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiJ9.not-a-real-signature");
+
+        MvcTestResult result = mvc.post().uri("/api/v1/auth/sign-in").with(csrf()).cookie(ended)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {"email": "%s", "password": "%s"}""".formatted(email, PASSWORD))
+            .exchange();
+
+        assertThat(result).hasStatusOk();
+    }
 }

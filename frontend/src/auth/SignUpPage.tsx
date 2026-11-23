@@ -5,6 +5,7 @@ import { Navigate, Link as RouterLink, useNavigate } from 'react-router'
 import { z } from 'zod'
 import { ApiError } from '../api/http'
 import { AuthLayout } from './AuthLayout'
+import { PasswordField } from './PasswordField'
 import { useSession, useSignUp } from './session'
 
 // The same rules as the API
@@ -59,9 +60,8 @@ export function SignUpPage() {
             error={!!errors.email}
             helperText={errors.email?.message}
           />
-          <TextField
+          <PasswordField
             label="Κωδικός"
-            type="password"
             autoComplete="new-password"
             {...form.register('password')}
             error={!!errors.password}

@@ -53,7 +53,7 @@ class SecurityConfig {
             // After the CSRF check, so cookie requests are checked; see SessionCookieFilter for why
             .addFilterAfter(new SessionCookieFilter(), CsrfFilter.class)
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/v1/auth/**").permitAll()
+                .requestMatchers(SessionCookieFilter.AUTH_PATHS + "**").permitAll()
                 .requestMatchers("/actuator/health/**", "/actuator/info", "/actuator/prometheus").permitAll()
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                 // With a temporary password, a user can only see who they are and choose a new password
