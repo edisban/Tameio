@@ -45,15 +45,13 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 class BankingApiTest {
 
     private final MockMvcTester mvc;
-    private final BankingService banking;
     private final JdbcTemplate jdbc;
     private final TransactionTemplate transaction;
     private final Ledger ledger;
 
     /** A business owner whose id the test knows, so it can also call the service directly. */
-    BankingApiTest(MockMvcTester mvc, BankingService banking, JdbcTemplate jdbc, TransactionTemplate transaction, Ledger ledger) {
+    BankingApiTest(MockMvcTester mvc, JdbcTemplate jdbc, TransactionTemplate transaction, Ledger ledger) {
         this.mvc = mvc;
-        this.banking = banking;
         this.jdbc = jdbc;
         this.transaction = transaction;
         this.ledger = ledger;
