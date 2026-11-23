@@ -140,7 +140,7 @@ describe('LoanCasePage', () => {
       http.get('*/api/v1/bank/loan-applications/l1', () => HttpResponse.json(recommended)),
       http.post('*/api/v1/bank/loan-applications/l1/decision', () =>
         HttpResponse.json(
-          { status: 403, title: 'Forbidden', detail: 'The amount is above your approval limit.' },
+          { status: 403, title: 'Not allowed', detail: 'Your approval limit does not cover this amount.', code: 'above-approval-limit' },
           { status: 403, headers: { 'Content-Type': 'application/problem+json' } },
         ),
       ),
@@ -150,6 +150,6 @@ describe('LoanCasePage', () => {
     await user.type(await screen.findByLabelText('Αιτιολόγηση'), 'Καλό προφίλ.')
     await user.click(screen.getByRole('button', { name: 'Οριστική απόφαση' }))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('The amount is above your approval limit.')
+    expect(await screen.findByRole('alert')).toHaveTextContent('Το ποσό ξεπερνά το όριο έγκρισής σας.')
   })
 })

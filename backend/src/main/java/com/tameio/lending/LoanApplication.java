@@ -32,6 +32,9 @@ import java.util.UUID;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 class LoanApplication extends AuditedEntity {
 
+    /** The refusal code when whoever recommended tries to decide too; clients explain it in their own words. */
+    static final String SAME_PERSON = "same-person";
+
     @Column(name = "business_id", nullable = false, updatable = false)
     private UUID businessId;
 
@@ -189,7 +192,7 @@ class LoanApplication extends AuditedEntity {
     /** The second pair of eyes: whoever recommended can never decide. */
     void decide(Staff manager, Recommendation decision, String note, Instant at) {
         if (manager.id().equals(recommendedBy)) {
-            throw new ForbiddenException("The person who recommended an application cannot also decide it.");
+            throw new ForbiddenException(SAME_PERSON, "The person who recommended an application cannot also decide it.");
         }
         moveTo(decision == Recommendation.APPROVE ? LoanStatus.APPROVED : LoanStatus.DECLINED);
         decisionNote = note;

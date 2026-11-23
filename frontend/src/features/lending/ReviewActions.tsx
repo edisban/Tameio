@@ -5,8 +5,22 @@ import { hasRole, useSession } from '../../auth/session'
 import { formatMoney } from '../../format'
 import { useDecide, useDisburse, useRecommend, useStartReview, type Case, type Outcome } from './api'
 
-const failure = (error: unknown) =>
-  error instanceof ApiError && error.problem.detail ? error.problem.detail : 'Η ενέργεια δεν ολοκληρώθηκε. Δοκιμάστε ξανά.'
+const TRY_AGAIN = 'Η ενέργεια δεν ολοκληρώθηκε. Δοκιμάστε ξανά.'
+
+// The API explains refusals in English; the rule's code says which one it was
+const REFUSALS: Record<string, string> = {
+  'above-approval-limit': 'Το ποσό ξεπερνά το όριο έγκρισής σας. Την απόφαση παίρνει συνάδελφος με μεγαλύτερο όριο.',
+  'same-person': 'Εισηγηθήκατε εσείς αυτή την αίτηση, οπότε την απόφαση παίρνει άλλος συνάδελφος.',
+}
+
+function failure(error: unknown): string {
+  if (!(error instanceof ApiError)) return TRY_AGAIN
+  const { code, status } = error.problem
+  if (code && REFUSALS[code]) return REFUSALS[code]
+  if (status === 409) return 'Η αίτηση άλλαξε στο μεταξύ. Ανανεώστε τη σελίδα και δοκιμάστε ξανά.'
+  if (status === 403) return 'Δεν έχετε δικαίωμα για αυτή την ενέργεια.'
+  return TRY_AGAIN
+}
 
 /** Approve or decline, with the reasons in words: an analyst's recommendation or a manager's decision. */
 function VerdictForm({ title, action, pending, onSend }: {

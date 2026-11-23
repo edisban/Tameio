@@ -229,7 +229,10 @@ class LendingApiTest {
     void managerCannotApproveAboveTheirLimit() throws Exception {
         String id = recommended("60000");
 
-        assertThat(decide(id, manager)).hasStatus(HttpStatus.FORBIDDEN);
+        MvcTestResult refused = decide(id, manager);
+
+        assertThat(refused).hasStatus(HttpStatus.FORBIDDEN);
+        assertThat(refused).bodyJson().extractingPath("$.code").isEqualTo("above-approval-limit");
     }
 
     @Test
@@ -245,7 +248,10 @@ class LendingApiTest {
         post("/api/v1/bank/loan-applications/" + id + "/recommendation", twoHats, """
             {"outcome": "APPROVE", "note": "Mine"}""");
 
-        assertThat(decide(id, twoHats)).hasStatus(HttpStatus.FORBIDDEN);
+        MvcTestResult refused = decide(id, twoHats);
+
+        assertThat(refused).hasStatus(HttpStatus.FORBIDDEN);
+        assertThat(refused).bodyJson().extractingPath("$.code").isEqualTo("same-person");
     }
 
     @Test

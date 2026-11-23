@@ -3,6 +3,8 @@ export type Problem = {
   status: number
   title?: string
   detail?: string
+  /** Names the business rule behind a refusal, so the page can explain it in Greek. */
+  code?: string
   errors?: Record<string, string>
 }
 
