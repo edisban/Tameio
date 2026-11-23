@@ -32,7 +32,7 @@
 		<springdoc.version>3.2.0</springdoc.version>
 		<aws-sdk.version>2.57.8</aws-sdk.version>
 		<jacoco.version>0.8.16</jacoco.version>
-		<bouncycastle.version>1.86</bouncycastle.version>
+		<bouncycastle.version>1.87</bouncycastle.version>
 	</properties>
 	<dependencies>
 		<dependency>
