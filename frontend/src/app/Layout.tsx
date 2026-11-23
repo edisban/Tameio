@@ -22,9 +22,10 @@ import {
   Typography,
 } from '@mui/material'
 import { useState, type ReactNode } from 'react'
-import { Link, Outlet, useLocation, useNavigate } from 'react-router'
-import { hasRole, isStaff, useSession, useSignOut, type Me } from '../auth/session'
+import { Link, Outlet, useLocation } from 'react-router'
+import { hasRole, isStaff, useSession, type Me } from '../auth/session'
 import { Logo } from './Logo'
+import { SignOutDialog, type SignOutScope } from './SignOutDialog'
 import { colourFor, initials } from './theme'
 
 const SIDEBAR_WIDTH = 280
@@ -52,9 +53,8 @@ function navigationFor(me: Me | null | undefined): NavItem[] {
 
 function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const session = useSession()
-  const signOut = useSignOut()
-  const signOutEverywhere = useSignOut(true)
-  const navigate = useNavigate()
+  // Which sign-out is waiting for an answer: a question for this component alone, so plain state
+  const [signingOut, setSigningOut] = useState<SignOutScope | null>(null)
   const { pathname } = useLocation()
   const me = session.data
 
@@ -103,25 +103,19 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
               aria-label="Αποσύνδεση από όλες τις συσκευές"
               size="small"
               sx={{ color: 'inherit' }}
-              disabled={signOutEverywhere.isPending}
-              onClick={() => signOutEverywhere.mutate(undefined, { onSettled: () => navigate('/sign-in', { replace: true }) })}
+              onClick={() => setSigningOut('everywhere')}
             >
               <DevicesOtherRoundedIcon fontSize="small" />
             </IconButton>
           </Tooltip>
           <Tooltip title="Αποσύνδεση">
-            <IconButton
-              aria-label="Αποσύνδεση"
-              size="small"
-              sx={{ color: 'inherit' }}
-              disabled={signOut.isPending}
-              onClick={() => signOut.mutate(undefined, { onSettled: () => navigate('/sign-in', { replace: true }) })}
-            >
+            <IconButton aria-label="Αποσύνδεση" size="small" sx={{ color: 'inherit' }} onClick={() => setSigningOut('here')}>
               <LogoutRoundedIcon fontSize="small" />
             </IconButton>
           </Tooltip>
         </Stack>
       )}
+      <SignOutDialog scope={signingOut} onClose={() => setSigningOut(null)} />
     </Stack>
   )
 }

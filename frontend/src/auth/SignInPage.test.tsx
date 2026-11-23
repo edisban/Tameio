@@ -33,6 +33,7 @@ describe('SignInPage', () => {
     await fillAndSubmit(user, 'emma@example.com', 'tameio-demo')
 
     expect(sent).toEqual({ email: 'emma@example.com', password: 'tameio-demo' })
+    expect(await screen.findByText('Συνδεθήκατε επιτυχώς. Καλώς ήρθατε, Emma Wilson.')).toBeInTheDocument()
   })
 
   it('says the email or password is wrong, without saying which', async () => {

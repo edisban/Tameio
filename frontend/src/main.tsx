@@ -4,6 +4,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { createBrowserRouter, RouterProvider } from 'react-router'
 import { Layout } from './app/Layout'
+import { Notifications } from './app/Notifications'
 import { theme } from './app/theme'
 import { ApiError } from './api/http'
 import { RequireSession } from './auth/RequireSession'
@@ -75,6 +76,7 @@ createRoot(document.getElementById('root')!).render(
       <ThemeProvider theme={theme}>
         <CssBaseline />
         <RouterProvider router={router} />
+        <Notifications />
       </ThemeProvider>
     </QueryClientProvider>
   </StrictMode>,

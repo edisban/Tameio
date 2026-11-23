@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form'
 import { Navigate, useNavigate } from 'react-router'
 import { z } from 'zod'
 import { ApiError } from '../api/http'
+import { useNotices } from '../app/notices'
 import { AuthLayout } from './AuthLayout'
 import { PasswordField } from './PasswordField'
 import { homeOf, useChangePassword, useSession } from './session'
@@ -32,12 +33,14 @@ export function ChangePasswordPage() {
   const session = useSession()
   const change = useChangePassword()
   const navigate = useNavigate()
+  const notify = useNotices(state => state.notify)
   const form = useForm<Form>({ resolver: zodResolver(schema), defaultValues: { currentPassword: '', newPassword: '', repeat: '' } })
   const { errors, isSubmitting } = form.formState
 
   const submit = form.handleSubmit(async ({ currentPassword, newPassword }) => {
     try {
       const me = await change.mutateAsync({ currentPassword, newPassword })
+      notify('Ο κωδικός σας άλλαξε.')
       navigate(homeOf(me), { replace: true })
     } catch {
       // Shown from change.error below
