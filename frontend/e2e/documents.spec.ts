@@ -3,9 +3,9 @@ import { fixture, registerBusiness, signUp } from './support'
 
 test.beforeEach(async ({ page }) => {
   await signUp(page)
-  const afm = await registerBusiness(page, 'Καφέ Δοκιμής')
+  const afm = await registerBusiness(page, 'Test Café')
   await page.getByRole('link', { name: new RegExp(`ΑΦΜ ${afm}`) }).click()
-  await expect(page.getByRole('heading', { name: 'Καφέ Δοκιμής' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Test Café' })).toBeVisible()
   await expect(page.getByText('Κανένα παραστατικό ακόμα')).toBeVisible()
 })
 
@@ -70,7 +70,7 @@ test('the owner checks what was read, corrects the category and confirms it', as
   await form.getByRole('button', { name: 'Επιβεβαίωση' }).click()
 
   await expect(page.getByText('Αποθηκεύτηκε.')).toBeVisible()
-  await page.getByRole('link', { name: 'Καφέ Δοκιμής' }).click()
+  await page.getByRole('link', { name: 'Test Café' }).click()
   await expect(row.getByText('Ελέγχθηκε')).toBeVisible()
   await expect(row.getByText('Εξοπλισμός')).toBeVisible()
 

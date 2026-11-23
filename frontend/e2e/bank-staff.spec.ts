@@ -8,7 +8,7 @@ test('an administrator adds a manager, who must choose a password at first sign-
   const email = `manager-${crypto.randomUUID()}@bank.example`
   await page.getByRole('button', { name: 'Νέο μέλος' }).click()
   const dialog = page.getByRole('dialog')
-  await dialog.getByLabel('Ονοματεπώνυμο').fill('Ελένη Δοκιμή')
+  await dialog.getByLabel('Ονοματεπώνυμο').fill('Emma Testwood')
   await dialog.getByLabel('Email').fill(email)
   await dialog.getByRole('combobox', { name: 'Ρόλος' }).click()
   await page.getByRole('option', { name: 'Διευθυντής πιστοδοτήσεων' }).click()
@@ -32,7 +32,7 @@ test('an administrator adds a manager, who must choose a password at first sign-
 
   // Disabling the account ends the manager's session at once
   await page.reload()
-  await page.getByRole('row').filter({ hasText: email }).getByRole('switch', { name: 'Ενεργός λογαριασμός: Ελένη Δοκιμή' }).click()
+  await page.getByRole('row').filter({ hasText: email }).getByRole('switch', { name: 'Ενεργός λογαριασμός: Emma Testwood' }).click()
   await expect(page.getByRole('row').filter({ hasText: email })).toContainText('Ανενεργός')
   await manager.reload()
   await expect(manager).toHaveURL(/\/sign-in$/)

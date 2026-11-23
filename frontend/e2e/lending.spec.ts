@@ -5,7 +5,7 @@ const newPage = async (browser: Browser) => (await browser.newContext({ locale: 
 
 test('a business applies, an analyst recommends, a manager approves and pays the loan into the account', async ({ page, browser }) => {
   test.setTimeout(90_000)
-  const name = `Εργαστήριο ${crypto.randomUUID().slice(0, 8)}`
+  const name = `Workshop ${crypto.randomUUID().slice(0, 8)}`
   await signUp(page)
   const afm = await registerBusiness(page, name)
   await page.getByRole('link', { name: new RegExp(`ΑΦΜ ${afm}`) }).click()

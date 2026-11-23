@@ -3,7 +3,7 @@ import { registerBusiness, signInAsAdmin, signUp } from './support'
 
 test('a business opens an account and receives money; the bank books still balance', async ({ page, browser }) => {
   await signUp(page)
-  const afm = await registerBusiness(page, 'Ταβέρνα Τράπεζας')
+  const afm = await registerBusiness(page, 'Harbour Tavern')
   await page.getByRole('link', { name: new RegExp(`ΑΦΜ ${afm}`) }).click()
   await page.getByRole('tab', { name: 'Λογαριασμοί' }).click()
 
@@ -25,5 +25,5 @@ test('a business opens an account and receives money; the bank books still balan
   await expect(staff.getByText('Ισοσκελισμένο')).toBeVisible()
   await staff.getByRole('link', { name: 'Λογαριασμοί πελατών' }).click()
   await staff.getByRole('textbox', { name: 'Αναζήτηση λογαριασμών' }).fill(iban.replace(/\s/g, ''))
-  await expect(staff.getByRole('table', { name: 'Λογαριασμοί πελατών' })).toContainText('Ταβέρνα Τράπεζας')
+  await expect(staff.getByRole('table', { name: 'Λογαριασμοί πελατών' })).toContainText('Harbour Tavern')
 })

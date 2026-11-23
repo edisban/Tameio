@@ -1,7 +1,6 @@
 import AssignmentOutlinedIcon from '@mui/icons-material/AssignmentOutlined'
 import BadgeOutlinedIcon from '@mui/icons-material/BadgeOutlined'
 import DevicesOtherRoundedIcon from '@mui/icons-material/DevicesOtherRounded'
-import FactCheckOutlinedIcon from '@mui/icons-material/FactCheckOutlined'
 import AccountBalanceWalletOutlinedIcon from '@mui/icons-material/AccountBalanceWalletOutlined'
 import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined'
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded'
@@ -11,7 +10,6 @@ import {
   AppBar,
   Avatar,
   Box,
-  Chip,
   Drawer,
   IconButton,
   List,
@@ -31,7 +29,7 @@ import { colourFor, initials } from './theme'
 
 const SIDEBAR_WIDTH = 280
 
-type NavItem = { label: string; icon: ReactNode; to?: string }
+type NavItem = { label: string; icon: ReactNode; to: string }
 
 // Accounts, documents, books and loans are tabs of each business, so one entry leads to all of them
 const businessNavigation: NavItem[] = [{ label: 'Επιχειρήσεις', icon: <StorefrontOutlinedIcon />, to: '/businesses' }]
@@ -48,7 +46,6 @@ function navigationFor(me: Me | null | undefined): NavItem[] {
   }
   if (hasRole(me, 'ADMIN')) {
     items.push({ label: 'Προσωπικό', icon: <BadgeOutlinedIcon />, to: '/bank/staff' })
-    items.push({ label: 'Αρχείο ενεργειών', icon: <FactCheckOutlinedIcon /> })
   }
   return items
 }
@@ -68,30 +65,18 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
       </Box>
 
       <List component="nav" aria-label="Κύριο μενού" sx={{ mt: 2, display: 'grid', gap: 0.5 }}>
-        {navigationFor(me).map(item =>
-          item.to ? (
-            <ListItemButton
-              key={item.label}
-              component={Link}
-              to={item.to}
-              selected={item.to === '/bank' ? pathname === '/bank' || pathname.startsWith('/bank/loans') : pathname.startsWith(item.to)}
-              onClick={onNavigate}
-            >
-              <ListItemIcon sx={{ color: 'inherit', minWidth: 36 }}>{item.icon}</ListItemIcon>
-              <ListItemText primary={item.label} slotProps={{ primary: { sx: { fontWeight: 600 } } }} />
-            </ListItemButton>
-          ) : (
-            <ListItemButton key={item.label} disabled sx={{ '&.Mui-disabled': { opacity: 0.55 } }}>
-              <ListItemIcon sx={{ color: 'inherit', minWidth: 36 }}>{item.icon}</ListItemIcon>
-              <ListItemText primary={item.label} sx={{ minWidth: 0 }} slotProps={{ primary: { noWrap: true } }} />
-              <Chip
-                label="Σύντομα"
-                size="small"
-                sx={{ ml: 1, flexShrink: 0, height: 20, fontSize: 11, color: '#ffffff', bgcolor: 'rgba(255,255,255,0.12)' }}
-              />
-            </ListItemButton>
-          ),
-        )}
+        {navigationFor(me).map(item => (
+          <ListItemButton
+            key={item.label}
+            component={Link}
+            to={item.to}
+            selected={item.to === '/bank' ? pathname === '/bank' || pathname.startsWith('/bank/loans') : pathname.startsWith(item.to)}
+            onClick={onNavigate}
+          >
+            <ListItemIcon sx={{ color: 'inherit', minWidth: 36 }}>{item.icon}</ListItemIcon>
+            <ListItemText primary={item.label} slotProps={{ primary: { sx: { fontWeight: 600 } } }} />
+          </ListItemButton>
+        ))}
       </List>
 
       <Box sx={{ flexGrow: 1 }} />
