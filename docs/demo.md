@@ -101,8 +101,9 @@ Show the diagram at the top of the README.
 ## 9:15 AI where it pays (45 s): README, the field-extraction table
 
 > I measured whether a small LLM reads receipts better than the rules: on receipts from shops no model had
-> seen, the rules got all six fields right 69% of the time in 2 ms; the prompted model got 0% in 12 seconds.
-> So it stayed out of the app. The fine-tuning notebook is there to try the fair version.
+> seen, the rules got all six fields right 69% of the time in 2 ms; the prompted model got 0%. Fine-tuned with
+> LoRA it read the ΑΦΜ and the amounts better than the rules, but got the category of new shops wrong, so all
+> six were right only 37% of the time, in 2 seconds on a GPU. So it stayed out of the app.
 
 ## 10:00 Questions
 

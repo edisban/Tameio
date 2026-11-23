@@ -25,25 +25,47 @@
     },
     "prompted": {
       "model": "Qwen/Qwen2.5-0.5B-Instruct",
-      "hardware": "CPU, 8 threads",
+      "hardware": "GPU Tesla T4",
       "documents": 247,
       "field_accuracy": {
-        "issuer_afm": 0.6721,
+        "issuer_afm": 0.668,
         "issue_date": 0.4332,
         "net_amount": 0.0,
-        "vat_amount": 0.4696,
-        "total_amount": 0.2389,
+        "vat_amount": 0.4656,
+        "total_amount": 0.2429,
         "category": 0.0769
       },
       "all_fields_correct": 0.0,
-      "invalid_json_rate": 0.3279,
+      "invalid_json_rate": 0.332,
       "latency_ms": {
-        "mean": 12632.8,
-        "p50": 12414.2,
-        "p95": 14115.5
+        "mean": 2017.1,
+        "p50": 1929.7,
+        "p95": 2517.2
       },
-      "model_size_mb": 1976.1,
-      "evaluated_at": "2026-11-21T13:25:13+00:00"
+      "model_size_mb": 988.1,
+      "evaluated_at": "2026-11-23T09:11:32+00:00"
+    },
+    "finetuned": {
+      "model": "Qwen/Qwen2.5-0.5B-Instruct + LoRA",
+      "hardware": "GPU Tesla T4",
+      "documents": 247,
+      "field_accuracy": {
+        "issuer_afm": 0.9879,
+        "issue_date": 0.9717,
+        "net_amount": 0.9069,
+        "vat_amount": 0.9798,
+        "total_amount": 0.9798,
+        "category": 0.4453
+      },
+      "all_fields_correct": 0.3725,
+      "invalid_json_rate": 0.0121,
+      "latency_ms": {
+        "mean": 2043.3,
+        "p50": 1951.5,
+        "p95": 2487.9
+      },
+      "model_size_mb": 1023.3,
+      "evaluated_at": "2026-11-23T09:20:00+00:00"
     }
   }
 }

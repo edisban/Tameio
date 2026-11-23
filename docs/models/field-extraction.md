@@ -9,7 +9,7 @@ text, and whether a small LLM does it better than the rules the service already 
 | In production | The **baseline** (rules + TF-IDF). The LLM variants are measured, not deployed. |
 | Code | `ml/document-ai/extraction/`, dataset in `ml/document-ai/training/dataset.py` |
 | Results | [`ml/document-ai/results/field-extraction/comparison.md`](../../ml/document-ai/results/field-extraction/comparison.md) and `metrics.json` |
-| Errors | [`ml/document-ai/results/field-extraction/errors.md`](../../ml/document-ai/results/field-extraction/errors.md), from `python -m extraction.error_analysis` |
+| Errors | [baseline](../../ml/document-ai/results/field-extraction/errors.md), [prompted](../../ml/document-ai/results/field-extraction/errors-prompted.md), [fine-tuned](../../ml/document-ai/results/field-extraction/errors-finetuned.md), from `python -m extraction.error_analysis` |
 
 ## Data
 
@@ -54,20 +54,24 @@ size of the weights.
 | Variant | ΑΦΜ | Date | Net | VAT | Total | Category | All 6 | Invalid JSON | Latency p50 | Size | Hardware |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | baseline | 95.1% | 92.7% | 96.8% | 97.6% | 97.2% | 85.4% | 69.2% | 0.0% | 2 ms | 1.2 MB | CPU, 16 threads |
-| prompted | 67.2% | 43.3% | 0.0% | 47.0% | 23.9% | 7.7% | 0.0% | 32.8% | 12,414 ms | 1,976.1 MB | CPU, 8 threads |
+| prompted | 66.8% | 43.3% | 0.0% | 46.6% | 24.3% | 7.7% | 0.0% | 33.2% | 1,930 ms | 988.1 MB | GPU Tesla T4 |
+| finetuned | 98.8% | 97.2% | 90.7% | 98.0% | 98.0% | 44.5% | 37.2% | 1.2% | 1,952 ms | 1,023.3 MB | GPU Tesla T4 |
 
 All on the 247 golden receipts. **All 6** is the share of receipts with every field right, the number that
-decides how often a person has nothing to correct.
+decides how often a person has nothing to correct. The two LLM rows were measured on the same Colab T4 GPU,
+in half precision, so their sizes are half of the 2 GB the model takes on a CPU.
 
-- **Prompted, 0.5B**: one reply in three does not fit the schema (this run did not break the reasons
-  down; without the worked example, early trials wrote sums such as `"11.12 + 113.26 = 124.38"` in place
-  of an amount). Among the valid replies the ΑΦΜ and the date are
-  mostly right, because they are copied; the net amount, which often has to be worked out from the total
-  and the VAT, never is, and the category is right for fewer than one receipt in ten, below a guess among ten
-  categories (in the replies inspected by hand it was almost always `UTILITIES`). Twelve seconds a receipt on a CPU.
-- **Fine-tuned**: its row is added by the Colab notebook, which measures it on the same golden set and
-  writes it into `metrics.json`. It needs a GPU: on the laptop CPU one training step took 135 s, so the
-  two epochs would take about four hours, against about ten minutes on a T4.
+- **Prompted, 0.5B**: one reply in three does not fit the schema (without the worked example, early trials
+  wrote sums such as `"11.12 + 113.26 = 124.38"` in place of an amount). Among the valid replies the ΑΦΜ and
+  the date are mostly right, because they are copied; the net amount, which often has to be worked out from
+  the total and the VAT, never is, and the category is right for fewer than one receipt in ten, below a guess
+  among ten categories. On a laptop CPU it took 12 seconds a receipt, on the GPU 2 seconds; the accuracy was
+  the same on both, to within one receipt per field.
+- **Fine-tuned, the same 0.5B with LoRA**: two epochs, about ten minutes on the T4 (on the laptop CPU one
+  training step took 135 s, so it would have taken about four hours). Invalid replies fell from one in three
+  to 3 in 247, and the four fields it copies from the receipt (ΑΦΜ, date, VAT, total) are now right more
+  often than with the rules. The net amount and above all the category hold it back: **All 6** is 37.2%,
+  against the baseline's 69.2%.
 
 ## What the mistakes show
 
@@ -87,6 +91,21 @@ mistakes down with pandas ([errors.md](../../ml/document-ai/results/field-extrac
   the classifier needs more shops per category, or the review screen should ask for the category when the
   receipt has no item lines.
 
+The same analysis of the fine-tuned model ([errors-finetuned.md](../../ml/document-ai/results/field-extraction/errors-finetuned.md)):
+
+- **It reads through the OCR errors.** Of the 12 ΑΦΜ the rules left empty because the OCR put a letter in
+  place of a digit, it got 11 right, and 15 of the 18 dates. Its only empty fields are the 3 replies that were
+  not valid JSON. It is not always safe, though: 4 dates came back as a wrong value, with the day and month
+  mixed up (`2026-10-03` for `2026-10-31`), a mistake the rules never make.
+- **It cannot do the arithmetic.** Its 20 wrong net amounts are the total minus the VAT worked out with one
+  digit wrong: `1001.46` for `1101.46`, `203.85` for `303.85`, `109.05` for `110.05`. A language model writes
+  numbers digit by digit; it does not subtract. Each of these breaks net + VAT = total, a check the service
+  already runs, so the review screen would flag them.
+- **The category does not carry over to new shops.** 134 of its 137 category mistakes are wrong values, not
+  empty ones: rent taken for equipment (22 receipts), professional services for equipment (19), transport for
+  rent (11). With 4–6 shops per category it learnt the training shops, not what makes a receipt rent or
+  transport; the TF-IDF classifier, trained on the same 433 receipts, gets 85.4%.
+
 ## Limits
 
 - **Synthetic data.** The generator uses the layouts the rules were written for, which flatters the
@@ -94,23 +113,21 @@ mistakes down with pandas ([errors.md](../../ml/document-ai/results/field-extrac
   three; the corrections people make on the review screen are the real test set to build next.
 - **One small model.** 0.5B parameters is what fits a laptop CPU and a free GPU. Larger models would
   do better at the prompted task and cost more.
-- **Latency depends on the machine.** The baseline and the prompted model were measured on a laptop
-  CPU; the fine-tune on the GPU it was trained on. Compare accuracies directly; compare latencies only
-  within the same hardware.
+- **Latency depends on the machine.** The baseline was measured on a laptop CPU, the two LLMs on a T4 GPU.
+  Compare accuracies directly; compare latencies only within the same hardware.
 - **No confidence.** The LLM gives one answer per field with no confidence, while the baseline's fields
   carry one that the review screen uses to point a person at doubtful values.
 
 ## Conclusion
 
-**Today the baseline is enough, and the LLM is not connected to the app.** On these receipts the rules
-win every field, answer in 2 ms instead of 12 s, weigh 1.2 MB instead of 2 GB, and give each field a
-confidence the review screen uses. A prompted 0.5B model is not usable for this: it cannot do the
-arithmetic, does not know the categories, and breaks the format a third of the time.
+**The baseline stays, and the LLM is not connected to the app.** A prompted 0.5B model is not usable for
+this: it cannot do the arithmetic, does not know the categories, and breaks the format a third of the time.
 
-Fine-tuning is the fair test of the LLM: it teaches the format and the layouts from the 433 training
-receipts, so the invalid replies should mostly disappear. The bar it has to clear is the baseline's
-**All 6** on receipts from unseen shops, by a clear margin, at a latency the reading queue can absorb.
-Only then would it go into the service, behind a configuration switch with the rules as the fallback.
+Fine-tuning made a real difference: the format is learnt, and on the fields it copies from the receipt the
+fine-tuned model beats the rules, OCR errors included. It does not clear the bar that was set before it ran,
+the baseline's **All 6** on receipts from unseen shops: 37.2% against 69.2%, because it guesses the category
+of a new shop and gets the subtraction wrong. It also needs a GPU and 2 seconds a receipt, against 2 ms on a
+CPU, and gives no confidence per field.
 
 When an LLM is worth it: when receipts stop looking like the ones the rules were written for (invoices
 with several VAT rates and many lines, foreign or handwritten receipts, new layouts every week), writing
