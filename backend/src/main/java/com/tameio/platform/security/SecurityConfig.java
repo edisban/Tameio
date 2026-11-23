@@ -75,10 +75,11 @@ class SecurityConfig {
     /** Signed in, and not still on a temporary password the bank gave them. */
     private static AuthorizationManager<RequestAuthorizationContext> passwordChanged() {
         return (authentication, context) -> {
-            var auth = authentication.get();
-            boolean signedIn = auth != null && auth.isAuthenticated() && auth instanceof JwtAuthenticationToken;
-            boolean mustChange = signedIn && Boolean.TRUE.equals(((JwtAuthenticationToken) auth).getToken().getClaim(SessionStatus.PASSWORD_CHANGE_CLAIM));
-            return new AuthorizationDecision(signedIn && !mustChange);
+            if (!(authentication.get() instanceof JwtAuthenticationToken jwt) || !jwt.isAuthenticated()) {
+                return new AuthorizationDecision(false);
+            }
+            boolean mustChange = Boolean.TRUE.equals(jwt.getToken().getClaim(SessionStatus.PASSWORD_CHANGE_CLAIM));
+            return new AuthorizationDecision(!mustChange);
         };
     }
 

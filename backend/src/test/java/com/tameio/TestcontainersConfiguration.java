@@ -30,6 +30,8 @@ public class TestcontainersConfiguration {
     }
 
     @Bean
+    // Not a leak: the container is a bean, and Spring stops it when the test context closes
+    @SuppressWarnings("resource")
     GenericContainer<?> storageContainer() {
         return new GenericContainer<>(DockerImageName.parse("chrislusf/seaweedfs:4.50"))
             .withCommand("server", "-dir=/data", "-s3", "-s3.port=" + S3_PORT, "-s3.config=/etc/seaweedfs/s3.json")
