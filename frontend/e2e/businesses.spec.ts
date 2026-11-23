@@ -5,9 +5,9 @@ test('an owner registers a business and sees it in the list', async ({ page }) =
   await signUp(page)
   await expect(page.getByRole('heading', { name: 'Οι επιχειρήσεις μου' })).toBeVisible()
 
-  const afm = await registerBusiness(page, 'Φούρνος Η Γωνιά')
+  const afm = await registerBusiness(page, 'Corner Bakery')
 
-  await expect(page.getByRole('link', { name: new RegExp(`Φούρνος Η Γωνιά.*ΑΦΜ ${afm}`) })).toBeVisible()
+  await expect(page.getByRole('link', { name: new RegExp(`Corner Bakery.*ΑΦΜ ${afm}`) })).toBeVisible()
 })
 
 test('an invalid ΑΦΜ is caught before anything is sent', async ({ page }) => {

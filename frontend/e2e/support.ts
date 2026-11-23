@@ -11,7 +11,7 @@ export async function signUp(page: Page) {
   await page.goto('/')
   await page.waitForURL('/sign-in')
   await page.getByRole('link', { name: 'Εγγραφή' }).click()
-  await page.getByLabel('Ονοματεπώνυμο').fill('Δοκιμαστικός Χρήστης')
+  await page.getByLabel('Ονοματεπώνυμο').fill('Sam Tester')
   await page.getByLabel('Email').fill(`e2e-${crypto.randomUUID()}@example.com`)
   await page.getByLabel('Κωδικός').fill('e2e-password')
   await page.getByRole('button', { name: 'Δημιουργία λογαριασμού' }).click()
