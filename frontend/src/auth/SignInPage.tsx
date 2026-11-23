@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form'
 import { Navigate, Link as RouterLink, useLocation, useNavigate } from 'react-router'
 import { z } from 'zod'
 import { ApiError } from '../api/http'
+import { useNotices } from '../app/notices'
 import { AuthLayout } from './AuthLayout'
 import { PasswordField } from './PasswordField'
 import { homeOf, useSession, useSignIn } from './session'
@@ -27,6 +28,7 @@ export function SignInPage() {
   const session = useSession()
   const signIn = useSignIn()
   const navigate = useNavigate()
+  const notify = useNotices(state => state.notify)
   const from = (useLocation().state as { from?: string } | null)?.from
   const form = useForm<Form>({ resolver: zodResolver(schema), defaultValues: { email: '', password: '' } })
   const { errors, isSubmitting } = form.formState
@@ -34,6 +36,7 @@ export function SignInPage() {
   const submit = form.handleSubmit(async values => {
     try {
       const me = await signIn.mutateAsync(values)
+      notify(`Συνδεθήκατε επιτυχώς. Καλώς ήρθατε, ${me.name}.`)
       navigate(me.mustChangePassword ? '/change-password' : (from ?? homeOf(me)), { replace: true })
     } catch {
       // Shown from signIn.error below

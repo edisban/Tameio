@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form'
 import { Navigate, Link as RouterLink, useNavigate } from 'react-router'
 import { z } from 'zod'
 import { ApiError } from '../api/http'
+import { useNotices } from '../app/notices'
 import { AuthLayout } from './AuthLayout'
 import { PasswordField } from './PasswordField'
 import { useSession, useSignUp } from './session'
@@ -21,12 +22,14 @@ export function SignUpPage() {
   const session = useSession()
   const signUp = useSignUp()
   const navigate = useNavigate()
+  const notify = useNotices(state => state.notify)
   const form = useForm<Form>({ resolver: zodResolver(schema), defaultValues: { fullName: '', email: '', password: '' } })
   const { errors, isSubmitting } = form.formState
 
   const submit = form.handleSubmit(async values => {
     try {
       await signUp.mutateAsync(values)
+      notify('Ο λογαριασμός σας δημιουργήθηκε.')
       navigate('/businesses', { replace: true })
     } catch (error) {
       if (error instanceof ApiError && error.problem.status === 409) {

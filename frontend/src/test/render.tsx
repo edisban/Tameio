@@ -4,6 +4,7 @@ import { render } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactElement } from 'react'
 import { MemoryRouter, Route, Routes } from 'react-router'
+import { Notifications } from '../app/Notifications'
 import { theme } from '../app/theme'
 
 type Options = {
@@ -28,6 +29,7 @@ export function renderWithProviders(ui: ReactElement, { path = '/', route = '*' 
             <Route path={route} element={ui} />
           </Routes>
         </MemoryRouter>
+        <Notifications />
       </ThemeProvider>
     </QueryClientProvider>,
   )
