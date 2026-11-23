@@ -4,6 +4,7 @@
     python -m extraction.evaluate --variants prompted finetuned --adapter models/field-extraction-lora
     python -m extraction.evaluate --variants baseline --check
 
+Each variant's answer per receipt goes to predictions-<variant>.jsonl, which extraction.error_analysis reads.
 Results of variants not run this time are kept from the existing metrics.json, so CI can measure the
 baseline alone while the LLM results, measured once on a machine that can run them, stay in the file.
 With --check nothing is written: the run fails if the baseline no longer scores what the file says.
@@ -45,15 +46,27 @@ class Reader(Protocol):
     def read(self, text: str) -> dict[str, str | None] | None: ...
 
 
-def score(reader: Reader, test: list[Example], clock: Callable[[], float] = time.perf_counter) -> dict:
-    """Exact match per field; a reply that is not valid JSON in the schema misses every field."""
-    hits = dict.fromkeys(FIELDS, 0)
-    all_correct = invalid = 0
-    latencies = []
+def predict(reader: Reader, test: list[Example], clock: Callable[[], float] = time.perf_counter) -> list[dict]:
+    """Each receipt's answer (None for a reply that is not valid JSON in the schema) and how long it took."""
+    predictions = []
     for example in test:
         started = clock()
         found = reader.read(example.text)
-        latencies.append((clock() - started) * 1000)
+        predictions.append({"id": example.id, "found": found, "latency_ms": (clock() - started) * 1000})
+    return predictions
+
+
+def score(reader: Reader, test: list[Example], clock: Callable[[], float] = time.perf_counter) -> dict:
+    return summarize(reader, test, predict(reader, test, clock))
+
+
+def summarize(reader: Reader, test: list[Example], predictions: list[dict]) -> dict:
+    """Exact match per field; a reply that is not valid JSON in the schema misses every field."""
+    hits = dict.fromkeys(FIELDS, 0)
+    all_correct = invalid = 0
+    latencies = [prediction["latency_ms"] for prediction in predictions]
+    for example, prediction in zip(test, predictions, strict=True):
+        found = prediction["found"]
         if found is None:
             invalid += 1
             continue
@@ -151,9 +164,11 @@ def main() -> None:
     args = parser.parse_args()
 
     train, test = load("train", args.data), load("test", args.data)
-    results = {}
+    results, predictions = {}, {}
     for name in args.variants:
-        results[name] = score(build_reader(name, train, args.model, args.adapter), test)
+        reader = build_reader(name, train, args.model, args.adapter)
+        predictions[name] = predict(reader, test)
+        results[name] = summarize(reader, test, predictions[name])
         print(name, json.dumps({k: results[name][k] for k in ("field_accuracy", "invalid_json_rate")}))
 
     metrics_file = args.out / "metrics.json"
@@ -167,6 +182,14 @@ def main() -> None:
     args.out.mkdir(parents=True, exist_ok=True)
     metrics_file.write_text(json.dumps(metrics, indent=2, ensure_ascii=False) + "\n", encoding="utf-8", newline="\n")
     (args.out / "comparison.md").write_text(table(metrics), encoding="utf-8", newline="\n")
+    for name, answers in predictions.items():
+        write_predictions(args.out / f"predictions-{name}.jsonl", answers)
+
+
+def write_predictions(path: Path, predictions: list[dict]) -> None:
+    """What each receipt got, for the error analysis. No timings: those depend on the machine, the answers do not."""
+    lines = (json.dumps({"id": p["id"], "found": p["found"]}, ensure_ascii=False) for p in predictions)
+    path.write_text("".join(line + "\n" for line in lines), encoding="utf-8", newline="\n")
 
 
 if __name__ == "__main__":
