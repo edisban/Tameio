@@ -24,8 +24,18 @@ import java.util.Optional;
  * carry a bearer token, which is right for a header (a browser never adds one by itself) and wrong for
  * a cookie (a browser sends it on any request, including one another site makes it send). Turning the
  * cookie into a header only after the check keeps every cookie-authenticated request protected.
+ *
+ * <p>Signing up, in or out needs no session, so there the cookie is left out: a session that has ended
+ * (an account disabled, a database reset) would otherwise be refused before the password is even checked.
  */
 class SessionCookieFilter extends OncePerRequestFilter {
+
+    static final String AUTH_PATHS = "/api/v1/auth/";
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        return request.getRequestURI().startsWith(AUTH_PATHS);
+    }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)

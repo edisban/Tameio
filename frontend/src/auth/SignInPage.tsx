@@ -5,6 +5,7 @@ import { Navigate, Link as RouterLink, useLocation, useNavigate } from 'react-ro
 import { z } from 'zod'
 import { ApiError } from '../api/http'
 import { AuthLayout } from './AuthLayout'
+import { PasswordField } from './PasswordField'
 import { homeOf, useSession, useSignIn } from './session'
 
 const schema = z.object({
@@ -55,9 +56,8 @@ export function SignInPage() {
             error={!!errors.email}
             helperText={errors.email?.message}
           />
-          <TextField
+          <PasswordField
             label="Κωδικός"
-            type="password"
             autoComplete="current-password"
             {...form.register('password')}
             error={!!errors.password}
