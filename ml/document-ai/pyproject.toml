@@ -2,7 +2,7 @@
 name = "tameio-document-ai"
 version = "0.1.0"
 description = "Reads receipts and invoices: OCR, field extraction and expense classification"
-requires-python = ">=3.12,<3.13"
+requires-python = ">=3.12,<3.14"
 # Exact versions: the service is an application, so every build must get the same libraries
 dependencies = [
     "fastapi==0.162.0",
