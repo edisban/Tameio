@@ -34,6 +34,9 @@ import java.util.UUID;
 @Transactional(readOnly = true)
 class LoanReviewService {
 
+    /** The refusal code when the amount is above the decider's approval limit. */
+    static final String ABOVE_APPROVAL_LIMIT = "above-approval-limit";
+
     private static final Set<LoanStatus> VISIBLE_TO_THE_BANK = EnumSet.complementOf(EnumSet.of(LoanStatus.DRAFT));
 
     private final LoanApplicationRepository applications;
@@ -96,7 +99,7 @@ class LoanReviewService {
     private void requireApprovalLimit(CurrentUser manager, BigDecimal amount) {
         BigDecimal limit = staff.approvalLimit(manager.id()).orElse(null);
         if (limit == null || limit.compareTo(amount) < 0) {
-            throw new ForbiddenException("Your approval limit does not cover this amount.");
+            throw new ForbiddenException(ABOVE_APPROVAL_LIMIT, "Your approval limit does not cover this amount.");
         }
     }
 

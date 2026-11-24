@@ -26,6 +26,13 @@ import { useAccounts, useDemoDeposit, useOpenAccount, useStatement, type BankAcc
 import { TransactionsList } from './TransactionsList'
 
 /** For a local stack: money from a pretend customer, so the account has something to show. */
+// The API's reasons are in English; the only refusal here is the limit on accounts per business
+function openFailure(error: unknown): string {
+  return error instanceof ApiError && error.problem.status === 422
+    ? 'Η επιχείρηση έχει ήδη τους περισσότερους λογαριασμούς που επιτρέπονται.'
+    : 'Ο λογαριασμός δεν άνοιξε. Δοκιμάστε ξανά.'
+}
+
 function DemoDepositDialog({ businessId, account, open, onClose }: { businessId: string; account: BankAccount; open: boolean; onClose: () => void }) {
   const deposit = useDemoDeposit(businessId, account.id)
   const [amount, setAmount] = useState('1.000,00')
@@ -85,7 +92,7 @@ export function AccountsPage() {
   const selected = list.find(a => a.id === selectedId) ?? list[0]
 
   const open = () => openAccount.mutate('', { onSuccess: account => setSelectedId(account.id) })
-  const openError = openAccount.error instanceof ApiError ? openAccount.error.problem.detail : null
+  const openError = openAccount.isError ? openFailure(openAccount.error) : null
 
   return (
     <Stack spacing={4}>

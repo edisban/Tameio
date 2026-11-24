@@ -54,7 +54,9 @@ class ApiExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(ForbiddenException.class)
     ProblemDetail forbidden(ForbiddenException e) {
-        return problem(HttpStatus.FORBIDDEN, "Not allowed", e.getMessage());
+        ProblemDetail problem = problem(HttpStatus.FORBIDDEN, "Not allowed", e.getMessage());
+        problem.setProperty("code", e.getCode());
+        return problem;
     }
 
     @ExceptionHandler(UnprocessableException.class)
