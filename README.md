@@ -20,6 +20,8 @@ All people, businesses, movements and documents are invented by the demo data lo
   quarter, and a CSV export for the accountant.
 - **Loan application**, filled in from the account history and the expense book. After the loan is paid out,
   the business sees its monthly instalments.
+- **Assistant**: questions in plain Greek ("how much did I spend on rent?", "what is the loan rate?"), answered by
+  an AI agent from the business's own figures and the bank's documents, with the source. It only reads.
 
 **For the bank**
 - **Loan review with four eyes**: an analyst takes the case, sees a risk score of four factors and
@@ -40,12 +42,14 @@ flowchart LR
         accounting[accounting]
         banking[banking]
         lending[lending]
+        assistant[assistant]
         platform[platform]
     end
     db[(PostgreSQL)]
     s3[(SeaweedFS<br/>file storage)]
     mq{RabbitMQ}
     ai[Document AI<br/>Python]
+    agent[Assistant<br/>Python · LangGraph · Claude]
     prom[Prometheus → Grafana]
 
     browser --> nginx --> api
@@ -56,6 +60,8 @@ flowchart LR
     documents -. confirmed document .-> accounting
     lending -- figures, disbursement --> banking
     lending -- expenses --> accounting
+    assistant -- question, business --> agent
+    agent -. reads only .-> db
     prom -. metrics .-> api
 ```
 
@@ -74,6 +80,7 @@ reaches into another's internals.
 | `accounting` | The expense book and VAT |
 | `banking` | Accounts and the double-entry ledger: the only place money moves |
 | `lending` | Loan applications, risk score, review, disbursement and instalments |
+| `assistant` | Checks who asks the assistant, and passes the question on with their business |
 | `platform` | What all modules share: security, errors, file storage, database locks |
 
 **Modules talk through events.** When a document is uploaded, `documents` publishes an event in the same
@@ -101,6 +108,7 @@ instalments as due, takes a PostgreSQL advisory lock first.
 | Frontend | React 19, TypeScript, Vite, MUI, TanStack Query, React Hook Form + Zod | The screens for businesses and bank staff |
 | Web server | nginx | Serves the React app and forwards `/api` to the backend |
 | Document AI | Python, FastAPI, Tesseract OCR, scikit-learn | Reads receipts and suggests an expense category |
+| Assistant | Python, FastAPI, Pydantic, LangGraph, LangChain, Anthropic SDK (Claude), SQLAlchemy, fastembed (ONNX) | A tool-using agent over the business's figures, with retrieval over the bank's documents |
 | Monitoring | Micrometer, Prometheus, Grafana | Requests, latency, memory, the reading queue and the bank's figures |
 | Tests | JUnit 5, Testcontainers, Vitest, Testing Library, Playwright, pytest, k6 | Unit, API, end-to-end and load tests |
 | CI | GitHub Actions | Runs every test on every push |
@@ -115,6 +123,9 @@ docker compose --profile app up -d --build
 
 Open http://localhost:5180. The first start loads the demo data (about 20 seconds): four businesses with a
 year of history, and the bank's staff.
+
+The assistant needs a Claude API key: put `ANTHROPIC_API_KEY=...` in a `.env` file next to `compose.yaml` (it is
+git-ignored). Without one, everything else works and the assistant says it is not configured.
 
 | Sign in as | Password | Who |
 | --- | --- | --- |
@@ -155,6 +166,22 @@ uses the rules. The method, the data and an analysis of the mistakes are in the
 [model card](docs/models/field-extraction.md); the fine-tuning ran on a free Colab GPU
 ([notebook](ml/document-ai/notebooks/field_extraction_lora.ipynb)).
 
+## The assistant: an agent with tools and retrieval
+
+A business opens "Βοηθός" on any of its pages and asks in Greek. The question goes through the backend, which checks
+that the user belongs to the business, to a Python service where a **LangGraph** agent calls **Claude** (through the
+Anthropic SDK) and decides what to look up: the account, expenses by category, loans, or the bank's documents.
+
+- **Tools** read the database with **SQLAlchemy**, as a role that can only read six tables, and always for the
+  business the backend sent; no tool takes a business, so no prompt can reach another one.
+- **Retrieval (RAG)**: the bank's documents are split with **LangChain**, embedded by a multilingual model run as
+  **ONNX** on the CPU, and searched by cosine similarity; answers cite the document.
+- **Evaluation**: retrieval finds the right document for 11 of 12 questions (a CI test requires 90%); agent cases
+  check the tool called, the figure given and the refusals, against a sample database.
+- **Observability**: tokens, tool calls and latency in Prometheus.
+
+Details in the [model card](docs/models/assistant.md) and [ADR 0012](docs/adr/0012-assistant-reads-only-for-the-signed-in-business.md).
+
 ## Tests
 
 ```bash
@@ -162,6 +189,7 @@ cd backend && ./mvnw verify          # unit and API tests against real Postgres,
 cd frontend && npm test              # components, with the API faked
 cd frontend && npm run e2e           # the real app in Chromium (stack running)
 cd ml/document-ai && pytest          # extraction rules, OCR and the classifier's quality gate
+cd ml/assistant && pytest            # the assistant's tools, its loop with a stand-in for Claude, the retrieval gate
 ```
 
 ## Project layout
@@ -169,10 +197,10 @@ cd ml/document-ai && pytest          # extraction rules, OCR and the classifier'
 ```
 backend/    Spring Boot app, one package per module
 frontend/   React app, one folder per feature, and nginx.conf
-ml/         Document AI service, dataset and the rules-vs-LLM comparison
+ml/         Document AI service, the rules-vs-LLM comparison, and the assistant
 infra/      Prometheus and Grafana configuration
 load/       k6 load test
-docs/       Design document, architecture decisions (adr/), model card, demo script
+docs/       Design document, architecture decisions (adr/), model cards, demo script
 ```
 
 ## How I built this
