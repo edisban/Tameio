@@ -2,3 +2,5 @@
 mlflow.db
 mlruns/
 .venv/
+__pycache__/
+*.egg-info/
