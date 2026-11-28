@@ -57,12 +57,19 @@ final class LoanViews {
     record Step(String id, String name, Instant at) {
     }
 
+    /**
+     * The credit model's estimate beside the scorecard: the chance the loan is not repaid, and what moved it.
+     * Null for an application assessed before the model existed.
+     */
+    record Credit(BigDecimal defaultProbability, String modelVersion, List<CreditFactor> factors) {
+    }
+
     /** The whole case, for the analyst and the manager. */
     record CaseView(UUID id, String businessName, BigDecimal amount, int termMonths, LoanPurpose purpose, String description,
                     BigDecimal annualRate, BigDecimal monthlyInstalment, LoanStatus status, Figures figures, int riskScore,
                     RiskBand riskBand, List<RiskFactor> riskFactors, Instant submittedAt, Step review,
                     Recommendation recommendation, String recommendationNote, Step recommended, String decisionNote,
-                    Step decided, Instant disbursedAt) {
+                    Step decided, Instant disbursedAt, Credit credit) {
 
         static CaseView of(LoanApplication a) {
             return new CaseView(a.getId(), a.getBusinessName(), a.getAmount(), a.getTermMonths(), a.getPurpose(),
@@ -71,7 +78,9 @@ final class LoanViews {
                 step(a.getReviewerId(), a.getReviewerName(), a.getReviewStartedAt()),
                 a.getRecommendation(), a.getRecommendationNote(),
                 step(a.getRecommendedBy(), a.getRecommendedByName(), a.getRecommendedAt()),
-                a.getDecisionNote(), step(a.getDecidedBy(), a.getDecidedByName(), a.getDecidedAt()), a.getDisbursedAt());
+                a.getDecisionNote(), step(a.getDecidedBy(), a.getDecidedByName(), a.getDecidedAt()), a.getDisbursedAt(),
+                a.getDefaultProbability() == null ? null
+                    : new Credit(a.getDefaultProbability(), a.getCreditModelVersion(), List.copyOf(a.getCreditFactors())));
         }
 
         private static Step step(String id, String name, Instant at) {

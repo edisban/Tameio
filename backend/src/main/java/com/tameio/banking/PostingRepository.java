@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -38,6 +39,17 @@ interface PostingRepository extends JpaRepository<Posting, UUID> {
         where p.accountId = :accountId and p.bookedAt >= :since
           and e.kind <> com.tameio.banking.EntryKind.LOAN_DISBURSEMENT""")
     Flows flowsSince(UUID accountId, Instant since);
+
+    /** One movement's amount and time, for working out money in and out month by month. */
+    record Movement(BigDecimal amount, Instant bookedAt) {
+    }
+
+    @Query("""
+        select new com.tameio.banking.PostingRepository$Movement(p.amount, p.bookedAt)
+        from Posting p join p.entry e
+        where p.accountId = :accountId and p.bookedAt >= :since
+          and e.kind <> com.tameio.banking.EntryKind.LOAN_DISBURSEMENT""")
+    List<Movement> movementsSince(UUID accountId, Instant since);
 
     @Query("select min(p.bookedAt) from Posting p where p.accountId = :accountId")
     Optional<Instant> firstBooking(UUID accountId);

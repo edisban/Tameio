@@ -94,6 +94,17 @@ class LoanApplication extends AuditedEntity {
     @OrderColumn(name = "position")
     private List<RiskFactor> riskFactors = new ArrayList<>();
 
+    @Column(name = "default_probability", precision = 5, scale = 4)
+    private BigDecimal defaultProbability;
+
+    @Column(name = "credit_model_version", length = 20)
+    private String creditModelVersion;
+
+    @ElementCollection
+    @CollectionTable(name = "loan_credit_factor", joinColumns = @JoinColumn(name = "loan_application_id"))
+    @OrderColumn(name = "position")
+    private List<CreditFactor> creditFactors = new ArrayList<>();
+
     @Column(name = "submitted_at")
     private Instant submittedAt;
 
@@ -226,5 +237,9 @@ class LoanApplication extends AuditedEntity {
         riskBand = assessment.risk().band();
         riskFactors.clear();
         riskFactors.addAll(assessment.risk().factors());
+        defaultProbability = assessment.credit().probability();
+        creditModelVersion = assessment.credit().modelVersion();
+        creditFactors.clear();
+        creditFactors.addAll(assessment.credit().factors());
     }
 }

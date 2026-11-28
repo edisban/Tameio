@@ -30,6 +30,7 @@ import java.util.concurrent.TimeUnit;
 import static com.tameio.Latches.await;
 import static com.tameio.TestUsers.freshAfm;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 
@@ -202,6 +203,34 @@ class LendingApiTest {
         assertThat(opened).bodyJson().extractingPath("$.riskFactors").asArray().hasSize(4);
         assertThat(opened).bodyJson().extractingPath("$.riskFactors[0].code").isEqualTo("REPAYMENT_CAPACITY");
         assertThat(opened).bodyJson().extractingPath("$.riskBand").isNotNull();
+    }
+
+    @Test
+    void theCaseShowsTheCreditModelsEstimateBesideTheScorecard() throws Exception {
+        String id = submitted("5000");
+
+        MvcTestResult opened = mvc.get().uri("/api/v1/bank/loan-applications/{id}", id).with(analyst).exchange();
+
+        assertThat(opened).bodyJson().extractingPath("$.credit.modelVersion").isEqualTo("1");
+        assertThat(opened).bodyJson().extractingPath("$.credit.defaultProbability").asNumber().satisfies(p ->
+            assertThat(p.doubleValue()).isBetween(0.0, 1.0));
+        assertThat(opened).bodyJson().extractingPath("$.credit.factors").asArray().hasSize(6);
+        // One month in the account so far, with the 9.000 € deposit: 5.000 € is 5.000 / (12 × 9.000) of a year's
+        // inflow, and a single month cannot swing
+        assertThat(opened).bodyJson().extractingPath("$.credit.factors[1].measure").isEqualTo("loan_size");
+        assertThat(opened).bodyJson().extractingPath("$.credit.factors[1].value").asNumber()
+            .satisfies(v -> assertThat(v.doubleValue()).isCloseTo(5000.0 / (12 * 9000), within(1e-6)));
+        assertThat(opened).bodyJson().extractingPath("$.credit.factors[4].value").asNumber()
+            .satisfies(v -> assertThat(v.doubleValue()).isZero());
+    }
+
+    @Test
+    void theBusinessDoesNotSeeTheCreditModelEither() throws Exception {
+        String id = draft("5000");
+
+        MvcTestResult seen = mvc.get().uri("/api/v1/businesses/{b}/loan-applications/{id}", businessId, id).with(owner).exchange();
+
+        assertThat(seen).bodyJson().doesNotHavePath("$.credit");
     }
 
     @Test
