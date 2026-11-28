@@ -87,6 +87,32 @@ jobs:
           echo '### Field extraction' >> "$GITHUB_STEP_SUMMARY"
           cat results/field-extraction/comparison.md >> "$GITHUB_STEP_SUMMARY"
 
+  credit-risk:
+    name: Credit risk model (Python)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ml/credit-risk
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: ml/credit-risk/pyproject.toml
+      - run: pip install -e ".[dev]"
+      - run: ruff check .
+      - run: ruff format --check .
+      # The measures, the scorecard, the quality gate against it, and the examples shared with the backend
+      - run: pytest -q
+      - name: Train and report the model's scores
+        run: |
+          python -m credit_risk.train --check
+          echo '### Credit risk model' >> "$GITHUB_STEP_SUMMARY"
+          echo '```json' >> "$GITHUB_STEP_SUMMARY"
+          cat results/metrics.json >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
   assistant:
     name: Assistant (Python)
     runs-on: ubuntu-latest
@@ -110,7 +136,7 @@ jobs:
   e2e:
     name: End-to-end (Playwright)
     # Only worth running once every part passes its own checks
-    needs: [backend, frontend, document-ai, assistant]
+    needs: [backend, frontend, document-ai, credit-risk, assistant]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

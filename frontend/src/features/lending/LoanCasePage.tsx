@@ -4,6 +4,7 @@ import { formatDateTime, formatMoney, formatRate } from '../../format'
 import { useCase, type Case } from './api'
 import { purposeLabel, statusColour, statusLabel } from './labels'
 import { ReviewActions } from './ReviewActions'
+import { CreditPanel } from './CreditPanel'
 import { RiskPanel } from './RiskPanel'
 
 function Row({ label, value }: { label: string; value: string }) {
@@ -109,7 +110,10 @@ export function LoanCasePage() {
               <Terms loan={loan.data} />
               <History loan={loan.data} />
             </Stack>
-            <RiskPanel loan={loan.data} />
+            <Stack spacing={3}>
+              <RiskPanel loan={loan.data} />
+              {loan.data.credit && <CreditPanel credit={loan.data.credit} />}
+            </Stack>
           </Box>
         </>
       )}

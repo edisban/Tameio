@@ -28,6 +28,17 @@ const submitted: Case = {
   ],
   submittedAt: '2026-11-20T10:00:00Z', review: null, recommendation: null, recommendationNote: null, recommended: null,
   decisionNote: null, decided: null, disbursedAt: null,
+  credit: {
+    defaultProbability: 0.0812, modelVersion: '1',
+    factors: [
+      { measure: 'repayment_ratio', value: 0.264, contribution: -0.42 },
+      { measure: 'loan_size', value: 0.238, contribution: -0.11 },
+      { measure: 'history_months', value: 12, contribution: 0.05 },
+      { measure: 'cash_cushion', value: 11.4, contribution: -0.3 },
+      { measure: 'inflow_volatility', value: 0.31, contribution: 0.18 },
+      { measure: 'negative_months', value: 0.25, contribution: 0.44 },
+    ],
+  },
 }
 
 const recommended: Case = {
@@ -102,6 +113,34 @@ describe('LoanCasePage', () => {
     const factors = within(screen.getByRole('list', { name: 'Παράγοντες κινδύνου' }))
     expect(factors.getByText('Η δόση είναι το 26% του μηνιαίου πλεονάσματος.')).toBeInTheDocument()
     expect(factors.getByText('18/25')).toBeInTheDocument()
+  })
+
+  it('shows the credit model estimate beside the score, and which way each measure moved it', async () => {
+    server.use(
+      http.get('*/api/v1/me', () => HttpResponse.json(analyst)),
+      http.get('*/api/v1/bank/loan-applications/l1', () => HttpResponse.json(submitted)),
+    )
+    renderCase()
+
+    expect(await screen.findByLabelText('Πιθανότητα αθέτησης 8,1%')).toBeInTheDocument()
+    expect(screen.getByText(/Εκτίμηση μοντέλου · έκδοση 1/)).toBeInTheDocument()
+    const moved = within(screen.getByRole('list', { name: 'Τι μετακίνησε την εκτίμηση' }))
+    const red = moved.getByText('Μήνες με περισσότερα έξοδα από έσοδα').closest('li')!
+    expect(within(red).getByText('Ανεβάζει την εκτίμηση')).toBeInTheDocument()
+    expect(within(red).getByText('25%')).toBeInTheDocument()
+    const blue = moved.getByText('Δόση προς μηνιαίο πλεόνασμα').closest('li')!
+    expect(within(blue).getByText('Κατεβάζει την εκτίμηση')).toBeInTheDocument()
+  })
+
+  it('leaves the estimate out for an application assessed before the model', async () => {
+    server.use(
+      http.get('*/api/v1/me', () => HttpResponse.json(analyst)),
+      http.get('*/api/v1/bank/loan-applications/l1', () => HttpResponse.json({ ...submitted, credit: null })),
+    )
+    renderCase()
+
+    expect(await screen.findByLabelText('Βαθμός κινδύνου 68 από 100')).toBeInTheDocument()
+    expect(screen.queryByText(/Εκτίμηση μοντέλου/)).not.toBeInTheDocument()
   })
 
   it('lets an analyst take a submitted case and then recommend it with a reason', async () => {

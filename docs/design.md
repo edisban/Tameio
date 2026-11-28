@@ -148,8 +148,8 @@ Each model starts from a simple, measured baseline.
 | --- | --- | --- |
 | Reading fields | Tesseract OCR (Greek), then rules with a confidence per field and consistency checks | Field-level tests on real OCR |
 | Expense classification | TF-IDF + logistic regression | Macro F1 on shops never seen in training; CI fails if it drops |
+| Credit risk | A points scorecard (the score), and beside it a logistic regression on six measures from the account history, trained on a simulated loan book and computed in the core from its exported coefficients ([model card](models/credit-risk.md), [ADR 0011](adr/0011-credit-model-as-exported-coefficients.md)) | AUC and KS against the scorecard on held-out applications (0.81 against 0.73); exported only if it beats it; every measure's part shown to the analyst |
 | Assistant | A LangGraph agent on Claude with read-only tools for the signed-in business, and retrieval over the bank's documents (LangChain splitter, ONNX embeddings) ([model card](models/assistant.md), [ADR 0012](adr/0012-assistant-reads-only-for-the-signed-in-business.md)) | Retrieval hit@3 on twelve questions (CI requires 90%); agent cases for the tool called, the figure given and the refusals |
-| Credit risk (next) | A few explained rules or a logistic regression on the demo data | Every factor shown to the analyst |
 
 Credit scoring is a high-risk use under the EU AI Act: the score is explained, and a person makes every
 decision ([ADR 0005](adr/0005-human-decides-every-credit-decision.md)).

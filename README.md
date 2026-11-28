@@ -166,6 +166,24 @@ uses the rules. The method, the data and an analysis of the mistakes are in the
 [model card](docs/models/field-extraction.md); the fine-tuning ran on a free Colab GPU
 ([notebook](ml/document-ai/notebooks/field_extraction_lora.ipynb)).
 
+## Credit risk: a scorecard and a model beside it
+
+Each loan application gets a points scorecard (0 to 100, four measures, redoable on paper). Beside it the analyst
+now sees a **probability of default** from a logistic regression on six measures of the account's last twelve
+months, two of which the scorecard does not use: how much the money coming in swings, and how many months ended
+in the red. The bank has no real loans that went bad, so the model is trained on a simulated loan book
+(pandas, numpy), whose rule is written in the code.
+
+| On 1,800 held-out applications | Model | Scorecard |
+| --- | --- | --- |
+| AUC | 0.814 | 0.735 |
+| KS | 0.492 | 0.379 |
+
+The model is trained and checked in Python (scikit-learn, scipy, figures with matplotlib and seaborn, runs logged
+to a local MLflow) and is exported only if it beats the scorecard. The core computes the same probability in Java
+from the exported coefficients, and a test holds the two equal to six decimals. The case page shows how much each
+measure moved the estimate; a person decides. Details in the [model card](docs/models/credit-risk.md).
+
 ## The assistant: an agent with tools and retrieval
 
 A business opens "Βοηθός" on any of its pages and asks in Greek. The question goes through the backend, which checks
@@ -189,6 +207,7 @@ cd backend && ./mvnw verify          # unit and API tests against real Postgres,
 cd frontend && npm test              # components, with the API faked
 cd frontend && npm run e2e           # the real app in Chromium (stack running)
 cd ml/document-ai && pytest          # extraction rules, OCR and the classifier's quality gate
+cd ml/credit-risk && pytest          # the credit model's measures and its quality gate against the scorecard
 cd ml/assistant && pytest            # the assistant's tools, its loop with a stand-in for Claude, the retrieval gate
 ```
 
@@ -197,7 +216,7 @@ cd ml/assistant && pytest            # the assistant's tools, its loop with a st
 ```
 backend/    Spring Boot app, one package per module
 frontend/   React app, one folder per feature, and nginx.conf
-ml/         Document AI service, the rules-vs-LLM comparison, and the assistant
+ml/         Document AI service, the rules-vs-LLM comparison, the credit risk model and the assistant
 infra/      Prometheus and Grafana configuration
 load/       k6 load test
 docs/       Design document, architecture decisions (adr/), model cards, demo script
