@@ -87,10 +87,30 @@ jobs:
           echo '### Field extraction' >> "$GITHUB_STEP_SUMMARY"
           cat results/field-extraction/comparison.md >> "$GITHUB_STEP_SUMMARY"
 
+  assistant:
+    name: Assistant (Python)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ml/assistant
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: ml/assistant/pyproject.toml
+      - run: pip install -e ".[dev]"
+      - run: ruff check .
+      - run: ruff format --check .
+      # Tools against a sample database, the agent's loop with a stand-in for Claude, and the retrieval quality gate
+      # with the real embedding model; no API key, nothing billed
+      - run: pytest -q
+
   e2e:
     name: End-to-end (Playwright)
     # Only worth running once every part passes its own checks
-    needs: [backend, frontend, document-ai]
+    needs: [backend, frontend, document-ai, assistant]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

@@ -72,6 +72,20 @@ services:
     ports:
       - "127.0.0.1:8090:8090"
 
+  assistant:
+    # The business's assistant (Python, FastAPI, a LangGraph agent on Claude); only the backend calls it. It reads
+    # the database as a role that can only read (created by the backend's migration V13). Without ANTHROPIC_API_KEY
+    # in .env it starts, and answers that it is not configured.
+    build: ./ml/assistant
+    image: tameio/assistant:dev
+    environment:
+      TAMEIO_ASSISTANT_DB_URL: postgresql+psycopg://tameio_assistant:${TAMEIO_ASSISTANT_DB_PASSWORD:-tameio_assistant}@postgres:5432/tameio
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    ports:
+      - "127.0.0.1:8091:8091"
+    depends_on:
+      postgres: { condition: service_healthy }
+
   backend:
     profiles: [app]
     build: ./backend
@@ -80,6 +94,8 @@ services:
       TAMEIO_DB_URL: jdbc:postgresql://postgres:5432/tameio
       TAMEIO_S3_ENDPOINT: http://storage:8333
       TAMEIO_DOCUMENT_AI_URL: http://document-ai:8090
+      TAMEIO_ASSISTANT_URL: http://assistant:8091
+      TAMEIO_ASSISTANT_DB_PASSWORD: ${TAMEIO_ASSISTANT_DB_PASSWORD:-tameio_assistant}
       TAMEIO_RABBITMQ_HOST: rabbitmq
       # Local only: demo people, businesses and a year of history (README lists the sign-ins)
       TAMEIO_DEMO_DATA: "true"
