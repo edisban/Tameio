@@ -61,6 +61,21 @@ export type QueueItem = {
 export type RiskFactor = { code: RiskCode; measured: number | null; points: number; maxPoints: number }
 export type Step = { id: string; name: string; at: string }
 
+export type CreditMeasure =
+  | 'repayment_ratio'
+  | 'loan_size'
+  | 'history_months'
+  | 'cash_cushion'
+  | 'inflow_volatility'
+  | 'negative_months'
+
+/** The credit model's estimate beside the scorecard; null for applications assessed before it existed. */
+export type CreditEstimate = {
+  defaultProbability: number
+  modelVersion: string
+  factors: { measure: CreditMeasure; value: number; contribution: number }[]
+}
+
 /** The whole case, as the bank sees it. */
 export type Case = {
   id: string
@@ -84,6 +99,7 @@ export type Case = {
   decisionNote: string | null
   decided: Step | null
   disbursedAt: string | null
+  credit: CreditEstimate | null
 }
 
 export type Verdict = { outcome: Outcome; note: string }
