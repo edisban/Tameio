@@ -22,6 +22,12 @@ scrape_configs:
     static_configs:
       - targets: [rabbitmq:15692]
 
+  # The assistant: calls to Claude, tokens, tool use and latency
+  - job_name: assistant
+    metrics_path: /metrics/
+    static_configs:
+      - targets: [assistant:8091]
+
   - job_name: prometheus
     static_configs:
       - targets: [localhost:9090]

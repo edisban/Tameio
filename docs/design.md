@@ -149,6 +149,7 @@ Each model starts from a simple, measured baseline.
 | Reading fields | Tesseract OCR (Greek), then rules with a confidence per field and consistency checks | Field-level tests on real OCR |
 | Expense classification | TF-IDF + logistic regression | Macro F1 on shops never seen in training; CI fails if it drops |
 | Credit risk | A points scorecard (the score), and beside it a logistic regression on six measures from the account history, trained on a simulated loan book and computed in the core from its exported coefficients ([model card](models/credit-risk.md), [ADR 0011](adr/0011-credit-model-as-exported-coefficients.md)) | AUC and KS against the scorecard on held-out applications (0.81 against 0.73); exported only if it beats it; every measure's part shown to the analyst |
+| Assistant | A LangGraph agent on Claude with read-only tools for the signed-in business, and retrieval over the bank's documents (LangChain splitter, ONNX embeddings) ([model card](models/assistant.md), [ADR 0012](adr/0012-assistant-reads-only-for-the-signed-in-business.md)) | Retrieval hit@3 on twelve questions (CI requires 90%); agent cases for the tool called, the figure given and the refusals |
 
 Credit scoring is a high-risk use under the EU AI Act: the score is explained, and a person makes every
 decision ([ADR 0005](adr/0005-human-decides-every-credit-decision.md)).
@@ -200,6 +201,7 @@ decision ([ADR 0005](adr/0005-human-decides-every-credit-decision.md)).
 | 7 | Field extraction compared: rules, a prompted LLM and a LoRA fine-tune, with a model card | Done |
 | 8 | Observability and load balancing: Prometheus, Grafana, an alert, nginx in front of one or three instances, advisory locks, k6 | Done |
 | 9 | Review of the whole codebase, README for presenting it, a ten-minute demo script | Done |
+| 10 | Assistant: a LangGraph agent on Claude with read-only tools, retrieval over the bank's documents, evaluation | Done |
 
 ## 13. Later ideas
 
@@ -210,7 +212,7 @@ Not planned for now; recorded so the direction is clear.
 - myDATA (the tax authority's electronic books): fetching, classifying and issuing invoices.
 - Document AI: YOLO fine-tuning for field boxes, LayoutLM or Donut, a Greek BERT classifier, MLflow and
   DVC for experiments and data.
-- Assistants: a local LLM with retrieval, voice in Greek.
+- Assistant: voice in Greek, a local model for the same tools, actions behind a user's confirmation.
 - Risk: gradient boosting with SHAP, fraud detection on a payment graph, a cash-flow forecast.
 - Platform: Kafka for replayable events, Redis, Vault for secrets, Kubernetes with Helm, contract tests
   with Pact, WebSocket notifications.

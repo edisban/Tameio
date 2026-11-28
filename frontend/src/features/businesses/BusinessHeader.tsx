@@ -1,6 +1,8 @@
-import { Alert, Avatar, Breadcrumbs, Link, Skeleton, Stack, Tab, Tabs, Typography } from '@mui/material'
+import { Alert, Avatar, Breadcrumbs, Button, Link, Skeleton, Stack, Tab, Tabs, Typography } from '@mui/material'
+import { useState } from 'react'
 import { Link as RouterLink } from 'react-router'
 import { colourFor, initials } from '../../app/theme'
+import { AssistantDrawer } from '../assistant/AssistantDrawer'
 import { useBusiness } from './api'
 
 export type BusinessSection = 'accounts' | 'documents' | 'accounting' | 'loans'
@@ -15,6 +17,7 @@ const sections: { value: BusinessSection; label: string; path: string }[] = [
 /** The business's name and ΑΦΜ, and tabs for its sections. Renders the section only once the business is known. */
 export function BusinessHeader({ businessId, section }: { businessId: string; section: BusinessSection }) {
   const business = useBusiness(businessId)
+  const [assistant, setAssistant] = useState(false)
 
   return (
     <Stack spacing={2}>
@@ -33,7 +36,7 @@ export function BusinessHeader({ businessId, section }: { businessId: string; se
             <Avatar variant="rounded" sx={{ width: 56, height: 56, fontSize: 20, fontWeight: 700, bgcolor: colourFor(business.data.name) }}>
               {initials(business.data.name)}
             </Avatar>
-            <Stack sx={{ minWidth: 0 }}>
+            <Stack sx={{ minWidth: 0, flex: 1 }}>
               <Typography variant="h4" component="h1" noWrap>
                 {business.data.name}
               </Typography>
@@ -41,7 +44,11 @@ export function BusinessHeader({ businessId, section }: { businessId: string; se
                 ΑΦΜ {business.data.afm}
               </Typography>
             </Stack>
+            <Button variant="outlined" onClick={() => setAssistant(true)}>
+              Βοηθός
+            </Button>
           </Stack>
+          <AssistantDrawer businessId={businessId} open={assistant} onClose={() => setAssistant(false)} />
           <Tabs value={section} aria-label="Ενότητες επιχείρησης" sx={{ borderBottom: 1, borderColor: 'divider' }}>
             {sections.map(s => (
               <Tab key={s.value} value={s.value} label={s.label} component={RouterLink} to={`/businesses/${businessId}${s.path}`} />
