@@ -24,7 +24,8 @@ class LoanApplicationTest {
 
     private static Assessment assessment() {
         return new Assessment(new BigDecimal("0.07"), new BigDecimal("308.77"), new BigDecimal("9000"), new BigDecimal("7000"),
-            new BigDecimal("3000"), new BigDecimal("20000"), 14, new Scorecard.Result(100, RiskBand.LOW, List.of()));
+            new BigDecimal("3000"), new BigDecimal("20000"), 14, new Scorecard.Result(100, RiskBand.LOW, List.of()),
+            new CreditModel.Estimate(new BigDecimal("0.0400"), "1", List.of()));
     }
 
     private static LoanTerms terms(String amount) {

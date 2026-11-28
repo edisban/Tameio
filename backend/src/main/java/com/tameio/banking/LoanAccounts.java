@@ -12,7 +12,9 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -32,9 +34,14 @@ public class LoanAccounts {
      * @param averageMonthlyInflow  money in over the last twelve months, per month, loans left out
      * @param averageMonthlyOutflow money out over the same months, per month
      * @param monthsOfHistory       whole months since the account's first movement
+     * @param months                money in and out in each of the last twelve months the account existed, oldest first
      */
     public record AccountFigures(BigDecimal balance, BigDecimal averageMonthlyInflow, BigDecimal averageMonthlyOutflow,
-                                 int monthsOfHistory) {
+                                 int monthsOfHistory, List<MonthFlows> months) {
+    }
+
+    /** One month's money in and out, loans paid into the account left out. */
+    public record MonthFlows(BigDecimal inflow, BigDecimal outflow) {
     }
 
     private final BankAccountRepository accounts;
@@ -55,10 +62,39 @@ public class LoanAccounts {
         Instant now = clock.instant();
         Instant since = now.atOffset(ZoneOffset.UTC).minusMonths(MONTHS_ASSESSED).toInstant();
         PostingRepository.Flows flows = postings.flowsSince(account.getId(), since);
-        int months = postings.firstBooking(account.getId())
-            .map(first -> (int) ChronoUnit.MONTHS.between(first.atOffset(ZoneOffset.UTC), now.atOffset(ZoneOffset.UTC)))
+        Optional<Instant> first = postings.firstBooking(account.getId());
+        int months = first
+            .map(at -> (int) ChronoUnit.MONTHS.between(at.atOffset(ZoneOffset.UTC), now.atOffset(ZoneOffset.UTC)))
             .orElse(0);
-        return new AccountFigures(account.getBalance(), perMonth(flows.inflow()), perMonth(flows.outflow()), months);
+        return new AccountFigures(account.getBalance(), perMonth(flows.inflow()), perMonth(flows.outflow()), months,
+            monthByMonth(account.getId(), now, first.orElse(now)));
+    }
+
+    /**
+     * The last twelve one-month windows back from now, each with its money in and out; a window that ended before
+     * the account's first movement is left out, since the account did not exist to earn anything in it.
+     */
+    private List<MonthFlows> monthByMonth(UUID accountId, Instant now, Instant firstBooking) {
+        Instant since = now.atOffset(ZoneOffset.UTC).minusMonths(MONTHS_ASSESSED).toInstant();
+        List<PostingRepository.Movement> movements = postings.movementsSince(accountId, since);
+        List<MonthFlows> months = new ArrayList<>();
+        for (int back = MONTHS_ASSESSED; back >= 1; back--) {
+            Instant from = now.atOffset(ZoneOffset.UTC).minusMonths(back).toInstant();
+            Instant to = now.atOffset(ZoneOffset.UTC).minusMonths(back - 1L).toInstant();
+            if (!to.isAfter(firstBooking)) {
+                continue;
+            }
+            BigDecimal in = BigDecimal.ZERO;
+            BigDecimal out = BigDecimal.ZERO;
+            for (PostingRepository.Movement m : movements) {
+                if (!m.bookedAt().isBefore(from) && m.bookedAt().isBefore(to)) {
+                    in = m.amount().signum() > 0 ? in.add(m.amount()) : in;
+                    out = m.amount().signum() < 0 ? out.subtract(m.amount()) : out;
+                }
+            }
+            months.add(new MonthFlows(in, out));
+        }
+        return months;
     }
 
     /**

@@ -1,0 +1,291 @@
+{
+  "modelVersion": "1",
+  "cases": [
+    {
+      "name": "steady and well covered",
+      "amount": 20000,
+      "instalment": 620,
+      "balance": 18000,
+      "historyMonths": 40,
+      "inflow": [
+        12000,
+        12000,
+        12000,
+        12000,
+        12000,
+        12000,
+        12000,
+        12000,
+        12000,
+        12000,
+        12000,
+        12000
+      ],
+      "outflow": [
+        9000,
+        9000,
+        9000,
+        9000,
+        9000,
+        9000,
+        9000,
+        9000,
+        9000,
+        9000,
+        9000,
+        9000
+      ],
+      "expected": {
+        "measures": {
+          "repayment_ratio": 0.206667,
+          "loan_size": 0.138889,
+          "history_months": 36.0,
+          "cash_cushion": 24.0,
+          "inflow_volatility": 0.0,
+          "negative_months": 0.0
+        },
+        "probability": 0.000261,
+        "contributions": {
+          "repayment_ratio": -1.844131,
+          "loan_size": -0.356481,
+          "history_months": -0.365678,
+          "cash_cushion": -1.020563,
+          "inflow_volatility": -0.627685,
+          "negative_months": -0.627606
+        }
+      }
+    },
+    {
+      "name": "seasonal, with lean months",
+      "amount": 30000,
+      "instalment": 930,
+      "balance": 2500,
+      "historyMonths": 14,
+      "inflow": [
+        4000,
+        3500,
+        5000,
+        9000,
+        15000,
+        22000,
+        26000,
+        25000,
+        14000,
+        7000,
+        4500,
+        4000
+      ],
+      "outflow": [
+        8000,
+        8000,
+        8500,
+        9000,
+        11000,
+        14000,
+        16000,
+        16000,
+        11000,
+        9000,
+        8000,
+        8000
+      ],
+      "expected": {
+        "measures": {
+          "repayment_ratio": 0.8928,
+          "loan_size": 0.215827,
+          "history_months": 14.0,
+          "cash_cushion": 2.688172,
+          "inflow_volatility": 0.711649,
+          "negative_months": 0.5
+        },
+        "probability": 0.181401,
+        "contributions": {
+          "repayment_ratio": -0.741999,
+          "loan_size": -0.306571,
+          "history_months": 0.384397,
+          "cash_cushion": 0.4939,
+          "inflow_volatility": 1.358375,
+          "negative_months": 0.714639
+        }
+      }
+    },
+    {
+      "name": "spends more than it earns",
+      "amount": 15000,
+      "instalment": 460,
+      "balance": 900,
+      "historyMonths": 8,
+      "inflow": [
+        6000,
+        6000,
+        6000,
+        6000,
+        6000,
+        6000,
+        6000,
+        6000,
+        6000,
+        6000,
+        6000,
+        6000
+      ],
+      "outflow": [
+        6500,
+        6500,
+        6500,
+        6500,
+        6500,
+        6500,
+        6500,
+        6500,
+        6500,
+        6500,
+        6500,
+        6500
+      ],
+      "expected": {
+        "measures": {
+          "repayment_ratio": 2.0,
+          "loan_size": 0.208333,
+          "history_months": 8.0,
+          "cash_cushion": 1.956522,
+          "inflow_volatility": 0.0,
+          "negative_months": 1.0
+        },
+        "probability": 0.469909,
+        "contributions": {
+          "repayment_ratio": 1.036492,
+          "loan_size": -0.311433,
+          "history_months": 0.588964,
+          "cash_cushion": 0.545893,
+          "inflow_volatility": -0.627685,
+          "negative_months": 2.056883
+        }
+      }
+    },
+    {
+      "name": "new account, few months",
+      "amount": 8000,
+      "instalment": 360,
+      "balance": 4000,
+      "historyMonths": 3,
+      "inflow": [
+        7000,
+        7500,
+        6800
+      ],
+      "outflow": [
+        5000,
+        5200,
+        4900
+      ],
+      "expected": {
+        "measures": {
+          "repayment_ratio": 0.174194,
+          "loan_size": 0.093897,
+          "history_months": 3.0,
+          "cash_cushion": 11.111111,
+          "inflow_volatility": 0.041464,
+          "negative_months": 0.0
+        },
+        "probability": 0.002074,
+        "contributions": {
+          "repayment_ratio": -1.896293,
+          "loan_size": -0.385667,
+          "history_months": 0.759435,
+          "cash_cushion": -0.104652,
+          "inflow_volatility": -0.511968,
+          "negative_months": -0.627606
+        }
+      }
+    },
+    {
+      "name": "large loan for its size",
+      "amount": 120000,
+      "instalment": 2380,
+      "balance": 30000,
+      "historyMonths": 60,
+      "inflow": [
+        20000,
+        21000,
+        19000,
+        22000,
+        20500,
+        21500,
+        20000,
+        19500,
+        22500,
+        21000,
+        20000,
+        20800
+      ],
+      "outflow": [
+        16000,
+        16000,
+        16000,
+        16000,
+        16000,
+        16000,
+        16000,
+        16000,
+        16000,
+        16000,
+        16000,
+        16000
+      ],
+      "expected": {
+        "measures": {
+          "repayment_ratio": 0.511828,
+          "loan_size": 0.484262,
+          "history_months": 36.0,
+          "cash_cushion": 12.605042,
+          "inflow_volatility": 0.047551,
+          "negative_months": 0.0
+        },
+        "probability": 0.001365,
+        "contributions": {
+          "repayment_ratio": -1.353952,
+          "loan_size": -0.132438,
+          "history_months": -0.365678,
+          "cash_cushion": -0.210814,
+          "inflow_volatility": -0.49498,
+          "negative_months": -0.627606
+        }
+      }
+    },
+    {
+      "name": "no money coming in",
+      "amount": 5000,
+      "instalment": 230,
+      "balance": 100,
+      "historyMonths": 2,
+      "inflow": [
+        0,
+        0
+      ],
+      "outflow": [
+        300,
+        250
+      ],
+      "expected": {
+        "measures": {
+          "repayment_ratio": 2.0,
+          "loan_size": 3.0,
+          "history_months": 2.0,
+          "cash_cushion": 0.434783,
+          "inflow_volatility": 2.0,
+          "negative_months": 1.0
+        },
+        "probability": 0.999492,
+        "contributions": {
+          "repayment_ratio": 1.036492,
+          "loan_size": 1.499516,
+          "history_months": 0.79353,
+          "cash_cushion": 0.654031,
+          "inflow_volatility": 4.953886,
+          "negative_months": 2.056883
+        }
+      }
+    }
+  ]
+}
