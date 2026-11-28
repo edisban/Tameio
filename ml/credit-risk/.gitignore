@@ -1,0 +1,4 @@
+# Local MLflow runs of the credit model
+mlflow.db
+mlruns/
+.venv/

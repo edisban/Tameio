@@ -1,0 +1,65 @@
+{
+  "model": "logistic-regression",
+  "version": "1",
+  "trainedOn": "simulated loan book (ml/credit-risk/src/credit_risk/simulate.py), not real loans",
+  "intercept": -3.4096251,
+  "features": [
+    {
+      "name": "repayment_ratio",
+      "cap": 2.0,
+      "mean": 1.35473166,
+      "scale": 0.67117148,
+      "coefficient": 1.07809984
+    },
+    {
+      "name": "loan_size",
+      "cap": 3.0,
+      "mean": 0.68842186,
+      "scale": 0.36852372,
+      "coefficient": 0.23906052
+    },
+    {
+      "name": "history_months",
+      "cap": 36.0,
+      "mean": 25.27452381,
+      "scale": 11.85247085,
+      "coefficient": -0.40410222
+    },
+    {
+      "name": "cash_cushion",
+      "cap": 24.0,
+      "mean": 9.63843364,
+      "scale": 7.87572189,
+      "coefficient": -0.55966556
+    },
+    {
+      "name": "inflow_volatility",
+      "cap": 2.0,
+      "mean": 0.22491331,
+      "scale": 0.11959058,
+      "coefficient": 0.33375164
+    },
+    {
+      "name": "negative_months",
+      "cap": 1.0,
+      "mean": 0.23378967,
+      "scale": 0.18215748,
+      "coefficient": 0.48899968
+    }
+  ],
+  "metrics": {
+    "auc": {
+      "model": 0.8137,
+      "scorecard": 0.7349
+    },
+    "ks": {
+      "model": 0.4917,
+      "scorecard": 0.3788
+    },
+    "brier": {
+      "model": 0.0736,
+      "baseRate": 0.0855
+    },
+    "defaultRate": 0.0944
+  }
+}
