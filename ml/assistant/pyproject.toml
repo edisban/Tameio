@@ -1,0 +1,47 @@
+[project]
+name = "tameio-assistant"
+version = "0.1.0"
+description = "Tameio's assistant: a LangGraph agent on Claude with read-only tools and retrieval over the bank's documents."
+requires-python = ">=3.12"
+dependencies = [
+    "anthropic==2.14.0",
+    "langgraph==1.2.24",
+    "fastapi==0.165.0",
+    "uvicorn[standard]==0.55.0",
+    "pydantic==2.14.4",
+    "pydantic-settings==2.16.3",
+    "sqlalchemy==2.1.9",
+    "psycopg[binary]==3.3.9",
+    "fastembed==0.9.1",
+    "numpy==2.5.5",
+    "prometheus-client==0.26.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==9.2.0",
+    "ruff==0.17.6",
+    "httpx==0.29.0",
+]
+
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["assistant*"]
+
+[tool.setuptools.package-data]
+assistant = ["knowledge/*.md"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF"]
+ignore = ["RUF001", "RUF002", "RUF003"]
